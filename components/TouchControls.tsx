@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useGame, T, Tx, useTx, jump } from './store';
 import { stick, currentAction } from './touch';
 import { sfx } from './audio';
+import { zoomBy } from './common';
 
 /** true on phones / tablets (coarse pointer or any touch input seen). */
 export function useTouchDevice() {
@@ -22,7 +23,7 @@ export function useTouchDevice() {
 }
 
 
-function Joystick() {
+function Joystick({ run = false }: { run?: boolean }) {
   const base = useRef<HTMLDivElement>(null);
   const knob = useRef<HTMLDivElement>(null);
   const pid = useRef<number | null>(null);
@@ -41,7 +42,7 @@ function Joystick() {
   useEffect(() => release, []);
 
   return (
-    <div className="joy" ref={base} aria-label="joystick"
+    <div className={`joy ${run ? 'joy-run' : ''}`} ref={base} aria-label="joystick"
       onPointerDown={(e) => {
         if (pid.current !== null) return;
         e.preventDefault();
@@ -84,6 +85,25 @@ const VERB: Record<string, Tx> = {
   '💬': T('말 걸기', 'Talk'), '🔍': T('찾았다!', 'Found!'), '🚪': T('문 열기', 'Door'), '🪑': T('앉기', 'Sit'), '🍎': T('사과 집기', 'Take'),
   '🪞': T('엿듣기', 'Listen'), '🏠': T('들어가기', 'Go in'), '🧍': T('일어나기', 'Stand'), '👆': T('깨우기', 'Wake'), '▶': T('다음', 'Next'),
 };
+
+/** Always-visible zoom (pinch / mouse wheel / + - keys also work). Hold to keep zooming. */
+function ZoomButtons() {
+  const tx = useTx();
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const start = (f: number) => (e: React.PointerEvent) => {
+    e.preventDefault(); e.stopPropagation(); sfx('click'); zoomBy(f);
+    if (timer.current) clearInterval(timer.current);
+    timer.current = setInterval(() => zoomBy(f), 90);
+  };
+  const stop = () => { if (timer.current) clearInterval(timer.current); timer.current = null; };
+  useEffect(() => stop, []);
+  return (
+    <div className="zoombtns">
+      <button aria-label={tx(T('확대', 'Zoom in'))} onPointerDown={start(0.9)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}>＋</button>
+      <button aria-label={tx(T('축소', 'Zoom out'))} onPointerDown={start(1 / 0.9)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}>－</button>
+    </div>
+  );
+}
 
 function ActionButtons() {
   const act = useCurrentAction();
@@ -143,14 +163,17 @@ export function TouchControls() {
   const mini = useGame((s) => s.mini);
   const overlay = useGame((s) => s.guideOpen || s.bookOpen);
   const sleeping = useGame((s) => s.sleeping);
+  const running = useGame((s) => s.running);
   useEffect(() => { document.body.classList.toggle('touch', touch); }, [touch]);
   const play = (scene === 'forest' || scene === 'cottage') && !hasLine && !mini && !overlay && !sleeping;
   const show = touch && play;
   useEffect(() => { if (!show) { stick.x = 0; stick.z = 0; stick.active = false; } }, [show]);
-  if (!touch) return play ? <div className="touchpad"><KeyPrompt /></div> : null;
+  if (!touch) return play ? <div className="touchpad">{!running && <><KeyPrompt /><ZoomButtons /></>}</div> : null;
   if (!show) return null;
+  if (running) return <div className="touchpad run"><Joystick run /></div>; // run-escort: just the pink steering pad
   return (
     <div className="touchpad">
+      <ZoomButtons />
       <Joystick />
       <ActionButtons />
     </div>

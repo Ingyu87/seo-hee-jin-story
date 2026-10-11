@@ -232,3 +232,56 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
 
 /* pinch = camera zoom (not page zoom) */
 .game canvas { touch-action: none; }
+
+/* zoom buttons (right edge, mid-screen) */
+.zoombtns { position: absolute; right: max(10px, env(safe-area-inset-right)); top: 42%; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
+.zoombtns button { width: 44px; height: 44px; border-radius: 50%; border: 0; font-size: 24px; font-weight: 900; line-height: 1; color: #c2185b;
+  background: #fffaf3e6; box-shadow: 0 3px 0 #f3b6cc, 0 4px 10px #0002; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.zoombtns button:active { transform: translateY(2px); box-shadow: 0 1px 0 #f3b6cc; }
+
+/* story goal pill + "well done" burst */
+.goal { position: absolute; left: 50%; transform: translateX(-50%); top: max(96px, calc(env(safe-area-inset-top) + 88px)); background: #ffffffe8; border: 2px solid #ffb3cf;
+  padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #6b3a4b; width: max-content; max-width: 94vw; text-align: center; pointer-events: none; animation: pop .35s ease-out; box-shadow: 0 2px 8px #0001; }
+.goal b { background: #ff7fb0; color: #fff; border-radius: 999px; padding: 1px 8px; margin-right: 4px; font-size: 12px; }
+.scene-forest .hint, .scene-cottage .hint { top: max(136px, calc(env(safe-area-inset-top) + 128px)) !important; }
+.cheer { position: absolute; left: 50%; top: 34%; pointer-events: none; z-index: 30; }
+.cheer-word { position: absolute; transform: translate(-50%, -50%); font-size: 30px; font-weight: 900; color: #ff4f93; white-space: nowrap;
+  text-shadow: 0 3px 0 #fff, 0 0 12px #fff; animation: cheerword 1.6s ease-out forwards; }
+.cheer-bit { position: absolute; font-size: 24px; animation: cheerbit 1.3s ease-out forwards; opacity: 0; }
+@keyframes cheerword { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -70%) scale(1); opacity: 0; } }
+@keyframes cheerbit { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--x), calc(var(--y) + 180px)) rotate(var(--r)); opacity: 0; } }
+
+.pop-score { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ff4f93; text-shadow: 0 2px 0 #fff; pointer-events: none; animation: popscore .8s ease-out forwards; }
+@keyframes popscore { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.6); } 30% { transform: translate(-50%, -90%) scale(1.25); } 100% { opacity: 0; transform: translate(-50%, -190%) scale(1); } }
+.mini-stats .hurry { color: #e53935; animation: hurry .5s ease-in-out infinite alternate; display: inline-block; }
+@keyframes hurry { from { transform: scale(1); } to { transform: scale(1.25); } }
+.mini-result small { display: block; font-size: 16px; margin-top: 6px; }
+.flower { transition: transform .1s; } .flower:active { transform: translate(-50%, -50%) scale(1.4); }
+
+/* hints fade away after a while — the goal pill stays */
+.scene-forest .hint, .scene-cottage .hint { animation: pop .25s ease-out, hintfade 9s ease-in forwards; }
+@keyframes hintfade { 0%, 80% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+
+/* ---------- run-escort (approved mockup) ---------- */
+.runbanner { position: absolute; left: 50%; transform: translateX(-50%); top: max(56px, calc(env(safe-area-inset-top) + 48px)); display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(#ffe98a, #ffd54f); border: 3px solid #fff3c4; outline: 2px dashed #e0a82e; outline-offset: -8px; border-radius: 22px; padding: 8px 18px;
+  box-shadow: 0 5px 0 #e0a82e, 0 8px 18px #0003; pointer-events: none; white-space: nowrap; animation: pop .35s ease-out; z-index: 5; }
+.runbanner b { font-family: var(--brand-font, inherit); font-size: clamp(18px, 5.4vw, 30px); color: #5a3416; letter-spacing: .5px; }
+.rb-apple { font-size: clamp(22px, 6vw, 34px); } .rb-sign { font-size: clamp(20px, 5.4vw, 30px); transform: rotate(8deg); }
+.runtip { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(26px, calc(env(safe-area-inset-bottom) + 18px)); pointer-events: none;
+  background: #fff0f3; border: 3px solid #f6a9bd; outline: 2px dashed #f6a9bd; outline-offset: -7px; border-radius: 18px; padding: 10px 16px; font-size: 18px; color: #d23f6c; box-shadow: 0 4px 12px #0002; }
+.runtip b { color: #e0457a; letter-spacing: 2px; }
+.joy.joy-run { background: radial-gradient(circle, #f7b3c4 0 62%, #f4a0b6 63%); border: 5px solid #fde4ea; box-shadow: 0 6px 18px #0003; }
+.joy.joy-run .joy-arrows { display: none; }
+.joy.joy-run .joy-knob { width: 64px; height: 64px; border: 0; border-radius: 0; background: #fcd3dc; box-shadow: none;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); filter: drop-shadow(0 2px 2px #c0607a); }
+.speedlines { position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: .55;
+  background:
+    repeating-linear-gradient(100deg, transparent 0 22px, #ffffffaa 22px 24px, transparent 24px 60px) left / 14% 100% no-repeat,
+    repeating-linear-gradient(80deg, transparent 0 22px, #ffffffaa 22px 24px, transparent 24px 60px) right / 14% 100% no-repeat;
+  -webkit-mask-image: linear-gradient(90deg, #000 0, transparent 14%, transparent 86%, #000 100%); mask-image: linear-gradient(90deg, #000 0, transparent 14%, transparent 86%, #000 100%);
+  animation: speed .35s linear infinite; }
+@keyframes speed { from { background-position: left 0 top 0, right 0 top 0; } to { background-position: left 0 top 60px, right 0 top 60px; } }
+
+.runskip { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(122px, calc(env(safe-area-inset-top) + 114px)); pointer-events: auto; z-index: 6;
+  border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 14px; color: #fff; background: linear-gradient(#90caf9, #42a5f5); box-shadow: 0 3px 0 #1e88e5; cursor: pointer; }

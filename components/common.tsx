@@ -3,9 +3,10 @@ import * as THREE from 'three';
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { player, npcPos, useGame } from './store';
+import { player, npcPos, useGame, DWARFS } from './store';
+const DWARF_NODES = new Set(DWARFS.map((d) => d.node));
 
-export function Lights({ sun = [8, 14, 6] as [number, number, number], range = 14, intensity = 2.2 }) {
+export function Lights({ sun = [8, 14, 6] as [number, number, number], range = 14, intensity = 2.2, ground = '#7fae6a' }) {
   const dir = useRef<THREE.DirectionalLight>(null!);
   const { scene, gl } = useThree();
   useEffect(() => {
@@ -23,7 +24,7 @@ export function Lights({ sun = [8, 14, 6] as [number, number, number], range = 1
   });
   return (
     <>
-      <hemisphereLight args={['#fff6e8', '#7fae6a', 0.75]} />
+      <hemisphereLight args={['#fff6e8', ground, 0.75]} />
       <directionalLight ref={dir} intensity={intensity} color="#fff1dc" castShadow
         shadow-mapSize={[2048, 2048]} shadow-bias={-0.0004} shadow-normalBias={0.03}
         shadow-camera-left={-range} shadow-camera-right={range} shadow-camera-top={range} shadow-camera-bottom={-range}
@@ -35,30 +36,42 @@ export function Lights({ sun = [8, 14, 6] as [number, number, number], range = 1
 /** Player-controlled zoom (mouse wheel on PC / two-finger pinch on phones): 0.55 = close-up, 1.7 = wide.
  *  No free rotation — the camera direction stays automatic. Conversation shots ignore it (auto framing). */
 export const camZoom = { v: 1 };
+const clampZ = (v: number) => Math.min(1.8, Math.max(0.5, v));
+/** zoom buttons (＋ / －) and keyboard (+ / -) step */
+export function zoomBy(f: number) { camZoom.v = clampZ(camZoom.v * f); }
 if (typeof window !== 'undefined') {
-  const clampZ = (v: number) => Math.min(1.7, Math.max(0.55, v));
-  const onCanvas = (t: EventTarget | null) => !!(t as HTMLElement)?.closest?.('canvas');
+  // anything over the 3D view counts (the canvas itself or R3F's wrapper divs), but not buttons / dialogue / joystick
+  const onView = (t: EventTarget | null) => {
+    const el = t as HTMLElement | null;
+    if (!el?.closest) return false;
+    if (el.closest('button, .dialog, .joy, .mini-wrap, .guide, .book, .toolbar, .topbar')) return false;
+    return !!el.closest('.game');
+  };
   window.addEventListener('wheel', (e) => {
-    if (!onCanvas(e.target)) return;
+    if (!onView(e.target)) return;
     e.preventDefault();
-    camZoom.v = clampZ(camZoom.v * Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 120) * 0.0012));
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY; // Firefox reports lines
+    camZoom.v = clampZ(camZoom.v * Math.exp(Math.sign(dy) * Math.min(Math.abs(dy), 150) * 0.0015));
   }, { passive: false });
-  const pts = new Map<number, { x: number; y: number }>(); let d0 = 0, z0 = 1;
-  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
-  window.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' || !onCanvas(e.target)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2) { d0 = spread(); z0 = camZoom.v; }
+  window.addEventListener('keydown', (e) => {
+    const t = e.target as HTMLElement | null; if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
+    if (e.key === '+' || e.key === '=') zoomBy(0.88);
+    if (e.key === '-' || e.key === '_') zoomBy(1 / 0.88);
   });
-  window.addEventListener('pointermove', (e) => {
-    if (!pts.has(e.pointerId)) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    if (pts.size === 2 && d0 > 20) camZoom.v = clampZ(z0 * d0 / Math.max(20, spread()));
-  });
-  const up = (e: PointerEvent) => { pts.delete(e.pointerId); if (pts.size < 2) d0 = 0; };
-  window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+  // two-finger pinch: Touch events (most reliable on iOS Safari + Android Chrome)
+  let d0 = 0, z0 = 1;
+  const spread = (tl: TouchList) => Math.hypot(tl[0].clientX - tl[1].clientX, tl[0].clientY - tl[1].clientY);
+  window.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2 && onView(e.touches[0].target) && onView(e.touches[1].target)) { d0 = spread(e.touches); z0 = camZoom.v; }
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && d0 > 20) { e.preventDefault(); camZoom.v = clampZ(z0 * d0 / Math.max(20, spread(e.touches))); }
+  }, { passive: false });
+  window.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; });
+  window.addEventListener('touchcancel', () => { d0 = 0; });
   // iOS Safari: stop the page itself from pinch-zooming over the game
   document.addEventListener('gesturestart', (e) => e.preventDefault());
+  (window as unknown as { __snow?: Record<string, unknown> }).__snow = Object.assign((window as unknown as { __snow?: Record<string, unknown> }).__snow || {}, { camZoom });
 }
 
 const _mid = new THREE.Vector3(), _dir = new THREE.Vector3(), _up = new THREE.Vector3();
@@ -67,14 +80,14 @@ const OCCLUDER = /^(Tree\d|FrameL|FrameR|Mush\d|Rocks)/;
 
 /** Trees / mushrooms standing between the camera and the player (or the NPC being talked to) are hidden
  *  so the characters are never blocked from view; they pop back as soon as the line of sight is clear. */
-function useOccluderFade() {
+function useOccluderFade(re: RegExp = OCCLUDER) {
   const { scene } = useThree();
   const list = useRef<THREE.Object3D[]>([]);
   const hidden = useRef(new Set<THREE.Object3D>());
   const n = useRef(0);
-  return (cam: THREE.Vector3, targets: THREE.Vector3[]) => {
+  return (cam: THREE.Vector3, targets: THREE.Vector3[], keep?: string | null) => {
     if (!list.current.length && n.current++ % 30 === 0) {
-      scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) { let a: THREE.Object3D | null = o; while (a && !(a.name && OCCLUDER.test(a.name))) a = a.parent; if (a) list.current.push(o); } });
+      scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) { let a: THREE.Object3D | null = o; while (a && !(a.name && re.test(a.name))) a = a.parent; if (a) { o.userData.occRoot = a.name; list.current.push(o); } } });
     }
     if (!list.current.length) return;
     const now = new Set<THREE.Object3D>();
@@ -82,24 +95,32 @@ function useOccluderFade() {
     for (const t of targets) {
       const d = _tgt.copy(t).sub(cam); const len = d.length(); if (len < 0.01) continue;
       _ray.set(cam, d.normalize()); _ray.far = len - 0.3;
-      for (const h of _ray.intersectObjects(list.current, false)) now.add(h.object);
+      for (const h of _ray.intersectObjects(list.current, false)) if (h.object.userData.occRoot !== keep) now.add(h.object);
     }
-    list.current.forEach((m) => (m.visible = !now.has(m)));
+    const roots = new Set([...now].map((m) => m.userData.occRoot as string));
+    list.current.forEach((m) => (m.visible = !roots.has(m.userData.occRoot))); // the whole tree / chair, not just one piece
     hidden.current = now;
   };
 }
 
 /** Smooth follow camera: world-space offset from the player, looking slightly ahead. */
-export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
+/** NPCs (not the speaker) currently standing in the conversation shot's line of sight — hidden while the line plays. */
+export const convoHidden = new Set<string>();
+
+export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6, occluders }: {
   offset: [number, number, number]; look: [number, number, number]; lerp?: number;
   fixed?: (p: THREE.Vector3) => { pos: THREE.Vector3; look: THREE.Vector3 };
   /** dollhouse room (front wall cut away at +z): conversation shots stay in front of it, never inside a wall */
   room?: { x: [number, number]; frontZ: number; maxY: number };
+  /** on-screen character height (metres, at the scene's character scale) used to frame conversation shots */
+  charH?: number;
+  /** dollhouse: furniture that may be tucked away while it blocks a conversation shot */
+  occluders?: RegExp;
 }) {
   const { camera } = useThree();
   const lookAt = useRef(new THREE.Vector3());
   const first = useRef(true);
-  const fade = useOccluderFade();
+  const fade = useOccluderFade(occluders);
   const convo = useRef<{ lines: unknown; talker: string | null; sign: number; pPos: THREE.Vector3 | null; nPos: THREE.Vector3 | null; pos: THREE.Vector3; look: THREE.Vector3 }>(
     { lines: null, talker: null, sign: 1, pPos: null, nPos: null, pos: new THREE.Vector3(), look: new THREE.Vector3() });
   useFrame(() => {
@@ -108,6 +129,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
     else {
       pos = player.pos.clone().add(new THREE.Vector3(...offset));
       lk = player.pos.clone().add(new THREE.Vector3(...look));
+      if (useGame.getState().running) { pos.y += 1.1; pos.z += 0.8; lk.z -= 3.5; lk.y -= 0.3; } // run-escort: see the obstacles coming
     }
     // conversation shot: while someone is talking, frame the player + that character a bit closer
     const g = useGame.getState();
@@ -150,18 +172,28 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
         // stays in front of the cut-away wall with only a slight turn
         // perpendicular to player→NPC (both seen side-on / 3/4, never one behind the other)
         const hdir = side.clone().addScaledVector(backXZ, 0.15).normalize();
+        if (portrait) {
+          // tall phone screen: turn the lens ~30° toward the pair's axis (from the usual camera side) so the two
+          // stand closer together on screen and the shot can come in much tighter — still both faces visible
+          const ax = axis.clone(); if (ax.dot(backXZ) < 0) ax.negate();
+          hdir.addScaledVector(ax, 0.55).normalize();
+        }
         if (room) { // dollhouse: look in through the open front — a 3/4 two-shot, faces towards the camera
-          hdir.copy(side).multiplyScalar(0.55).add(new THREE.Vector3(0, 0, 1)).normalize();
+          hdir.copy(side).multiplyScalar(portrait ? 0.4 : 0.55).add(new THREE.Vector3(0, 0, 1)).normalize();
         }
         const cam = camera as THREE.PerspectiveCamera;
         const aspect = typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 1.6;
         const vHalf = THREE.MathUtils.degToRad((cam.fov ?? 42) / 2);
         const hHalf = Math.atan(Math.tan(vHalf) * aspect);
-        const fitW = (sep / 2 + 1.0) / Math.tan(hHalf);   // both full bodies + a margin across the screen
-        const fitH = 2.4 / Math.tan(vHalf);               // head-to-toe vertically (with room for the dialogue box)
-        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH), 4, 22);
-        const el = THREE.MathUtils.degToRad(portrait ? 22 : 16);
-        c.look.copy(mid); c.look.y += portrait ? 0.15 : 0.75; // aim low so faces sit above the dialogue box on phones
+        // apparent (screen-plane) separation of the two characters from this angle
+        const screenSep = sep * Math.sqrt(Math.max(0.15, 1 - Math.pow(hdir.dot(axis), 2)));
+        const margin = portrait ? 0.6 : 0.8;
+        const fitW = (screenSep / 2 + margin) / Math.tan(hHalf);  // both bodies + a small margin across the screen
+        // head-to-toe vertically; on phones the bottom ~30% is the dialogue box, so frame into the top ~70%
+        const fitH = (charH + 0.3) / ((portrait ? 1.3 : 1.45) * Math.tan(vHalf));
+        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH), portrait ? 2.6 : 3.2, 22);
+        const el = THREE.MathUtils.degToRad(portrait ? 20 : 15);
+        c.look.copy(mid); c.look.y += (portrait ? 0.34 : 0.48) * dist * Math.tan(vHalf); // feet ~1/3 up the screen: everyone stays above the dialogue box
         c.pos.copy(c.look).addScaledVector(hdir, dist * Math.cos(el)); c.pos.y += dist * Math.sin(el);
         if (room) { // keep the lens out of the walls / roof: in front of the open side, between the side walls
           c.pos.x = THREE.MathUtils.clamp(c.pos.x, room.x[0], room.x[1]);
@@ -171,7 +203,21 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
       }
       pos = c.pos; lk = c.look;
       a = Math.min(a, 0.12);
-    } else convo.current.lines = null;
+      // anyone else standing between the lens and the two speakers is tucked away until the line is over
+      convoHidden.clear();
+      for (const [name, v] of Object.entries(npcPos)) {
+        if (name === g.talker) continue;
+        // story characters stay in shot for their scenes (old woman always; Snow White once the apple arrives)
+        if (!DWARF_NODES.has(name) && (name !== 'SnowWhiteHome' || g.apple !== 'hidden' || g.sleeping)) continue;
+        for (const t of [player.pos, npc]) {
+          const seg = _tgt.copy(t).sub(camera.position).setY(0); const l2 = seg.lengthSq(); if (l2 < 0.01) continue;
+          const rx = v.x - camera.position.x, rz = v.z - camera.position.z;
+          const k = (rx * seg.x + rz * seg.z) / l2;
+          if (k <= 0 || k >= 0.92) continue; // only in front of the speaker, not behind them
+          if (Math.hypot(rx - seg.x * k, rz - seg.z * k) < 0.75) { convoHidden.add(name); break; }
+        }
+      }
+    } else { convo.current.lines = null; convoHidden.clear(); }
     if (!(g.lines.length && npc && npc.distanceTo(player.pos) < 7)) pos = lk.clone().add(pos.clone().sub(lk).multiplyScalar(camZoom.v));
     first.current = false;
     camera.position.lerp(pos, a);
@@ -181,6 +227,10 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
       const tg = [player.pos.clone().setY(player.pos.y + 1.0), player.pos.clone().setY(player.pos.y + 0.3)];
       if (g.lines.length && npc) tg.push(npc.clone().setY(npc.y + 1.0));
       fade(camera.position, tg);
+    } else if (occluders) { // dollhouse: during a chat, a chair in front of a speaker steps aside (never the one you sit on)
+      const ch = charH * 0.6;
+      const tg = g.lines.length && npc ? [player.pos.clone().setY(player.pos.y + ch), player.pos.clone().setY(player.pos.y + ch * 0.4), npc.clone().setY(npc.y + 0.75), npc.clone().setY(npc.y + 0.4), npc.clone().setY(npc.y + 0.15)] : [];
+      fade(camera.position, tg, g.sitting);
     }
   });
   return null;

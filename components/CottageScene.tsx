@@ -8,6 +8,7 @@ import { useModel, useModelPart, MODELS, findNamed } from './models';
 import { Player, Npc, World } from './Player';
 import { Lights, FollowCam } from './common';
 import { useAct, Act } from './touch';
+import { cozyCottage, DINING_DX, BED_ZONE } from './cozy';
 
 const S = 0.68; // character scale used in the Blender cottage render
 const DWARF_S = S * 0.62;
@@ -15,14 +16,23 @@ const DOOR_Z = 1.2; // centre of the door opening (glTF z)
 
 // interior layout (glTF metres): room x∈[-4,4], z∈[-3,3]; front wall cut away (dollhouse), door on the left wall.
 const DWARF_SPOTS: Record<string, [number, number, number]> = {
-  Doc: [2.9, -2.0, -0.6],
+  Doc: [3.15, -1.35, -0.6],
   Grumpy: [3.1, 1.75, -1.2],
-  Happy: [1.55, 2.0, 0.2],
-  Sleepy: [-1.7, -2.2, 0],
-  Bashful: [-0.45, -2.25, 0],
-  Sneezy: [0.85, -2.25, 0],
-  Dopey: [-2.75, -0.55, 1.2],
+  Happy: [1.75, 2.05, 0.2],
+  Sleepy: [-1.45, -2.3, 0],
+  Bashful: [-0.2, -2.3, 0],
+  Sneezy: [1.0, -2.3, 0],
+  Dopey: [-1.75, 2.15, 1.2],
 };
+const AISLE_X = -1.6; // walkway between the beds (left wall) and the dining set
+/** Route from a dwarf's spot to the front of the door, around the table / beds / fireplace. */
+function routeToDoor(x: number, z: number): [number, number][] {
+  const r: [number, number][] = [];
+  if (z < -0.8) { r.push([x, -1.95]); r.push([AISLE_X, -1.95]); r.push([AISLE_X, 1.3]); }
+  else r.push([x, 1.3]);
+  r.push([-2.9, 1.3], [-2.9, DOOR_Z]);
+  return r;
+}
 
 /** Dollhouse camera: wide establishing shot outside, closer follow shot once the player is inside. */
 const _cp = new THREE.Vector3(), _cl = new THREE.Vector3();
@@ -52,7 +62,9 @@ function blocked(x: number, z: number) {
   if (!inFoot) return false;
   const interior = x > -3.62 && x < 3.62 && z > -2.6 && z < 2.7;
   if (interior) {
-    if (x > -2.05 && x < 1.45 && z > -0.98 && z < 0.4) return true; // table
+    if (x > -2.05 + DINING_DX && x < 1.45 + DINING_DX && z > -0.98 && z < 0.4) return true; // table
+    if (x < BED_ZONE.x && z < BED_ZONE.z) return true; // beds along the left wall
+    if (x > 1.45 && x < 3.35 && z < -2.0) return true; // fireplace
     return false;
   }
   // in a wall band: only the open door lets you through
@@ -65,6 +77,16 @@ function npcBlocked(x: number, z: number) {
   if (blocked(x, z)) return true;
   if (x < -3.4 && x > -4.4) return true; // doorway
   return Math.hypot(player.pos.x - x, player.pos.z - z) < 0.6;
+}
+
+/** Warm, gently flickering light from the fireplace. */
+function FireGlow() {
+  const ref = useRef<THREE.PointLight>(null!);
+  useFrame((st) => {
+    const t = st.clock.elapsedTime;
+    if (ref.current) ref.current.intensity = 3.2 + Math.sin(t * 9) * 0.35 + Math.sin(t * 23 + 1) * 0.25;
+  });
+  return <pointLight ref={ref} position={[2.4, 0.95, -1.75]} intensity={3.2} distance={5} decay={1.8} color="#ff9a4a" />;
 }
 
 export function CottageScene() {
@@ -85,6 +107,7 @@ export function CottageScene() {
   const tx = useTx();
 
   const { door, appleNode, chairs } = useMemo(() => {
+    cozyCottage(cottage);
     grounds.current = ['Ground', 'Floor', 'Rug', 'DoorPath'].map((n) => cottage.getObjectByName(n)).filter(Boolean) as THREE.Object3D[];
     const chairs: Record<string, THREE.Object3D> = {};
     for (let i = 1; i <= 7; i++) { const c = cottage.getObjectByName(`Chair${i}`); if (c) chairs[`Chair${i}`] = c; }
@@ -106,16 +129,10 @@ export function CottageScene() {
       return { pos, quat: c.getWorldQuaternion(new THREE.Quaternion()) };
     },
     onStep: (p) => {
+      // inside the cottage: the dwarfs wave — the welcome chat starts when the player talks to one of them
       const g = useGame.getState();
-      if (p.x > -3.0 && !g.talked['welcome']) {
-        useGame.setState({ talked: { ...g.talked, welcome: true }, target: null, pending: null, talker: 'Doc' });
-        g.say([
-          { speaker: DWARFS[0].name, text: T('오호! 손님이 왔구나! 일곱 난쟁이의 집에 온 걸 환영해!', 'Oho! We have a guest! Welcome to the home of the seven dwarfs!') },
-          { speaker: SPK.snow, text: T('난쟁이들아, 나를 여기서 지내게 해 줄래? 청소도 하고 요리도 할게!', 'Dear dwarfs, may I stay here with you? I\'ll clean and cook for you!') },
-          { speaker: DWARFS[0].name, text: T('물론이지! 대신 약속해. 우리가 광산에 일하러 간 동안 모르는 사람에게는 절대 문을 열어 주면 안 돼!', 'Of course! But promise us: while we\'re away at the mine, never open the door to a stranger!') },
-          { speaker: SPK.snow, text: T('약속할게! 자, 의자에 앉아서 쉬자. 난쟁이들한테 말을 걸면 재미있는 이야기를 들려줄 거야.', "I promise! Now let's sit and rest. Talk to the dwarfs — they have stories to tell.") },
-          ...(g.seek === 'off' ? [SEEK_ASK(HEROES[g.hero].call, HEROES[g.hero].name.en)] : []),
-        ]);
+      if (p.x > -3.0 && !g.talked['welcome'] && !g.talked['inside']) {
+        useGame.setState({ talked: { ...g.talked, inside: true }, hint: T('💬 난쟁이에게 가까이 가서 말하기 버튼을 눌러 봐!', '💬 Walk up to a dwarf and press the Talk button!') });
       }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +152,7 @@ export function CottageScene() {
 
   // action button (🅰 / Space): use whatever is within reach
   useAct('Door', { icon: '🚪', label: T('문 열기/닫기', 'Open / close door'), r: 1.6, pos: () => [player.pos.x < -3.9 ? -4.6 : -3.2, DOOR_Z], run: () => useGame.getState().interact('Door') });
-  useAct('Apple', { icon: '🍎', label: T('사과 집기', 'Pick up apple'), r: 1.5, pos: () => (useGame.getState().apple === 'table' ? [-0.9, 0.85] : null), run: () => useGame.getState().interact('Apple') });
+  useAct('Apple', { icon: '🍎', label: T('사과 집기', 'Pick up apple'), r: 1.5, pos: () => (useGame.getState().apple === 'table' ? [-0.9 + DINING_DX, 0.85] : null), run: () => useGame.getState().interact('Apple') });
   Object.keys(chairs).forEach((name) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useAct(name, { icon: '🪑', label: T('의자에 앉기', 'Sit down'), r: 0.95, pos: () => { const wp = chairs[name].getWorldPosition(new THREE.Vector3()); return [wp.x, wp.z]; }, run: () => useGame.getState().interact(name) });
@@ -177,7 +194,8 @@ export function CottageScene() {
       let left = DWARFS.length;
       DWARFS.forEach((d, i) => {
         const p = npcPos[d.node]; const z = p ? p.z : DWARF_SPOTS[d.node][1];
-        setTimeout(() => walkNpc(d.node, [[-2.9, THREE.MathUtils.clamp(z, -2.2, 2.2)], [-2.9, DOOR_Z], [-4.75, DOOR_Z], [-8.5 - i * 0.4, DOOR_Z + 0.4]], () => {
+        const x = p ? p.x : DWARF_SPOTS[d.node][0];
+        setTimeout(() => walkNpc(d.node, [...routeToDoor(x, z), [-4.75, DOOR_Z], [-8.5 - i * 0.4, DOOR_Z + 0.4]], () => {
           if (--left === 0) useGame.setState({ dwarfs: 'away', doorOpen: true });
         }, 1.7), i * 350);
       });
@@ -192,7 +210,7 @@ export function CottageScene() {
       DWARFS.forEach((d, i) => {
         const p = npcPos[d.node]; if (p) p.set(-8.5 - i * 0.4, 0.2, DOOR_Z + 0.4);
         const [hx, hz] = DWARF_SPOTS[d.node];
-        setTimeout(() => walkNpc(d.node, [[-4.75, DOOR_Z], [-2.9, DOOR_Z], [-2.9, THREE.MathUtils.clamp(hz, -2.2, 2.2)], [hx, hz]], () => {
+        setTimeout(() => walkNpc(d.node, [[-4.75, DOOR_Z], ...routeToDoor(hx, hz).reverse(), [hx, hz]], () => {
           if (--left === 0) useGame.setState({ dwarfs: 'home' });
         }, 2.2), 600 + i * 300);
       });
@@ -202,7 +220,7 @@ export function CottageScene() {
 
   const approach = (name: string): [number, number] => {
     if (name === 'Door') return player.pos.x < -3.9 ? [-4.75, DOOR_Z] : [-3.05, DOOR_Z];
-    if (name === 'Apple') return [-0.9, 0.85];
+    if (name === 'Apple') return [-0.9 + DINING_DX, 0.85];
     const c = chairs[name];
     if (c) {
       const wp = c.getWorldPosition(new THREE.Vector3());
@@ -251,9 +269,10 @@ export function CottageScene() {
     <>
       <color attach="background" args={['#f8ecd9']} />
       <fog attach="fog" args={['#f6eddc', 22, 60]} />
-      <Lights sun={[6, 12, 9]} range={11} intensity={2.3} />
-      <pointLight position={[0, 2.8, 0]} intensity={6} distance={9} color="#ffdcae" />
-      <FollowCam offset={[0, 0, 0]} look={[0, 0, 0]} lerp={0.06} fixed={cottageCam} room={{ x: [-3.3, 3.3], frontZ: 3.6, maxY: 3.3 }} />
+      <Lights sun={[6, 12, 9]} range={11} intensity={2.1} ground="#b08a62" />
+      <pointLight position={[0, 2.9, 0.4]} intensity={5} distance={9} decay={1.6} color="#ffd9a8" />
+      <FireGlow />
+      <FollowCam charH={1.65} occluders={/^Chair\d$/} offset={[0, 0, 0]} look={[0, 0, 0]} lerp={0.06} fixed={cottageCam} room={{ x: [-3.3, 3.3], frontZ: 3.6, maxY: 3.3 }} />
       <primitive object={cottage} onClick={onClick}
         onPointerMove={(e: ThreeEvent<PointerEvent>) => {
           const h = findNamed(e.object, isInteractive); hover.current = h;

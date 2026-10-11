@@ -133,6 +133,9 @@ export type NpcGoal = { path: ([number, number] | 'player')[]; speed?: number; d
 export const npcGoal: Record<string, NpcGoal | undefined> = {};
 export function walkNpc(name: string, path: NpcGoal['path'], done?: () => void, speed = 1.6) { npcGoal[name] = { path, done, speed, i: 0 }; }
 
+/** Run-escort helper: "skip" = auto-run straight through (obstacles ignored, faster) for little ones. */
+export const escort = { skip: false };
+
 /** Hop! (jump button / Space). Returns false if already in the air or busy. */
 export function jump() {
   const g = useGame.getState();
@@ -177,6 +180,7 @@ type State = {
   beats: Record<string, number>; // how far each character has told their part of the story
   spawnKey: number;
   talker: string | null; // NPC currently speaking (waves)
+  running: boolean; // run-escort to the cottage in progress (auto-forward)
 
   setHero: (h: HeroId) => void;
   setLang: (l: Lang) => void;
@@ -211,7 +215,7 @@ type State = {
 const fresh = {
   lines: [] as Line[], lineIdx: 0, hint: null, toast: null, target: null, pending: null, sitting: null,
   doorOpen: false, apple: 'hidden' as 'hidden' | 'table' | 'held' | 'eaten' | 'refused', dwarfs: 'home' as 'home' | 'leaving' | 'away' | 'returning', sleeping: false, taps: 0, ending: null, swFollow: false,
-  metSnowWhite: false, queenGone: false, seek: 'off' as 'off' | 'on' | 'done', talked: {}, beats: {} as Record<string, number>, talker: null as string | null, mini: null, stars: {}, found: [] as string[],
+  metSnowWhite: false, queenGone: false, seek: 'off' as 'off' | 'on' | 'done', talked: {}, beats: {} as Record<string, number>, talker: null as string | null, running: false, mini: null, stars: {}, found: [] as string[],
 };
 
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
@@ -246,12 +250,12 @@ export const useGame = create<State>((set, get) => ({
     if (id === 'flowers') {
       get().say([
         { speaker: n, text: T(`꽃을 ${score}송이 땄어! 이 꽃 너 줄게! 예쁘지?`, `I picked ${score} flowers! These are for you! Aren't they pretty?`) },
-        { speaker: SPK.snow, text: ok ? T('와, 이렇게 많이! 별 하나 줄게 ⭐ 이제 오두막으로 같이 가 줄래?', 'Wow, so many! Here\'s a star ⭐ Will you come with me to the cottage now?')
+        { speaker: SPK.snow, text: ok ? T('와, 이렇게 많이! 꽃향기 정말 좋다~ 이제 오두막으로 같이 가 줄래?', 'Wow, so many! They smell lovely~ Will you come with me to the cottage now?')
           : T('와, 정말 예쁘다! 이제 오두막으로 같이 가 줄래?', "Oh, they're lovely! Will you come with me to the cottage now?"), choices: [{ id: 'sw-go', label: T('같이 가자!', "Let's go!") }] },
       ]);
     }
-    if (id === 'rps') get().say([{ speaker: dw('Grumpy'), text: ok ? T('흥… 졌다! 너 꽤 하는구나. 별 하나 줄게 ⭐', "Hmph… I lost! You're pretty good. Here's a star ⭐") : T('헤헷, 내가 이겼지! 다음에 또 하자.', 'Heh, I win! Let\'s play again sometime.') }]);
-    if (id === 'dodge') get().say([{ speaker: dw('Doc'), text: ok ? T(`대단해! 사과를 ${score}번밖에 안 맞았어. 별 하나 줄게 ⭐`, `Amazing! Only ${score} hits. Here's a star ⭐`) : T(`어이쿠, ${score}번이나 맞았네! 다시 해 볼래?`, `Oops, ${score} hits! Want to try again?`) }]);
+    if (id === 'rps') get().say([{ speaker: dw('Grumpy'), text: ok ? T('흥… 졌다! 너 꽤 하는구나. …다음엔 안 질 거야!', "Hmph… I lost! You're pretty good. …I'll win next time!") : T('헤헷, 내가 이겼지! 다음에 또 하자.', 'Heh, I win! Let\'s play again sometime.') }]);
+    if (id === 'dodge') get().say([{ speaker: dw('Doc'), text: ok ? T(`대단해! 사과를 ${score}번밖에 안 맞았어. 날쌘돌이구나!`, `Amazing! Only ${score} hits. You're so quick!`) : T(`어이쿠, ${score}번이나 맞았네! 다시 해 볼래?`, `Oops, ${score} hits! Want to try again?`) }]);
   },
   findHidden: (name) => {
     const g = get();
@@ -264,7 +268,7 @@ export const useGame = create<State>((set, get) => ({
     if (found.length === HIDDEN.length) {
       set({ stars: { ...get().stars, hide: true }, seek: 'done' }); get().unlock('hide');
       setTimeout(() => sfx('wake'), 300);
-      g.say([{ speaker: d.name, text: T('들켰다! 숨바꼭질은 네가 이겼어. 별 하나 줄게 ⭐', 'You found us all! You win hide-and-seek. Here\'s a star ⭐') },
+      g.say([{ speaker: d.name, text: T('들켰다! 숨바꼭질은 네가 이겼어. 박사가 걱정하겠다, 얼른 가자!', 'You found us all! You win hide-and-seek. Doc must be worried — let\'s go!') },
         { speaker: SPK.story, text: T('미션 성공! 난쟁이 3명을 모두 찾았어요. 다 같이 오두막으로 돌아가요!', 'Mission complete! You found all 3 dwarfs. Let\'s all go back to the cottage!'),
           choices: [{ id: 'seek-home', label: T('오두막으로 돌아가기 🏠', 'Back to the cottage 🏠') }] }]);
     } else g.say([{ speaker: d.name, text: T('앗, 들켰다! 박사가 찾는다고? 알았어, 먼저 오두막에 가 있을게! 다른 친구들도 숲 어딘가에 숨어 있어!', 'Oops, you found me! Doc is looking for us? Okay, I\'ll head home! My friends are still hiding somewhere in the forest!') }]);
@@ -273,16 +277,17 @@ export const useGame = create<State>((set, get) => ({
   home: () => set({ ...fresh, scene: 'stories', spawnKey: get().spawnKey + 1 }),
   start: () => { set({ ...fresh }); get().goto('forest'); },
   goto: (s) => {
+    escort.skip = false;
     const n = HEROES[get().hero].name;
     set({ scene: s, target: null, pending: null, sitting: null, lines: [], lineIdx: 0, spawnKey: get().spawnKey + 1 });
     if (s === 'forest' && get().seek === 'on') {
       const h = HEROES[get().hero];
-      set({ hint: T('🔍 숨은 난쟁이 3명을 찾아라! 나무 옆을 잘 살펴봐.', '🔍 Find the 3 hidden dwarfs! Look beside the trees.') });
+      set({ hint: T('🔍 숨은 난쟁이 3명을 찾아라! 길가 덤불 뒤를 잘 살펴봐.', '🔍 Find the 3 hidden dwarfs! Check behind the bushes by the path.') });
       get().say([
         { speaker: SPK.story, text: T(`${h.subj} 난쟁이들을 찾으러 다시 숲으로 왔어요. 어디선가 “에… 에취!” 소리가 들려요!`, `${n.en} went back to the forest to look for the dwarfs. Somewhere nearby: "Ah… ah… ACHOO!"`) },
         { speaker: n, text: T('재채기 소리다! 나무 뒤에 숨어 있나 봐. 내가 꼭 찾아 줄게!', "That's a sneeze! Someone's hiding behind a tree. I'll find them!") },
-        { speaker: SPK.story, text: T('🔍 미션: 숨은 난쟁이 3명 찾기! 나무 옆 난쟁이에게 가까이 가면 버튼이 🔍 로 반짝여요. 그때 누르면 “찾았다!” 3명 다 찾으면 별 ⭐!',
-          '🔍 Mission: find the 3 hidden dwarfs! Get close to a dwarf by a tree and the button glows 🔍 — press it to shout "Found you!" Find all 3 for a star ⭐!') },
+        { speaker: SPK.story, text: T('🔍 미션: 숨은 난쟁이 3명 찾기! 덤불이 흔들리거나 모자가 살짝 보이면 가까이 가 봐! 버튼이 🔍 로 반짝여요. 그때 누르면 “찾았다!” 3명 다 찾아서 오두막에 데려다주자!',
+          '🔍 Mission: find the 3 hidden dwarfs! If a bush wiggles or a hat peeks out, get close — the button glows 🔍 — press it to shout "Found you!" Find all 3 and bring them home!') },
       ]);
     } else if (s === 'forest') {
       set({ hint: T('숲길을 따라 걸어가 보자! 땅을 누르면 그쪽으로 걸어가.', 'Follow the forest path! Tap the ground to walk there.') });
@@ -326,7 +331,7 @@ export const useGame = create<State>((set, get) => ({
     set({ lines: [], lineIdx: 0 });
     switch (id) {
       case 'sw-go':
-        set({ swFollow: true, hint: T('백설공주와 함께 길 끝 오두막까지 가 보자! (아래 버튼으로 바로 갈 수도 있어)', "Walk with Snow White to the cottage at the end of the path! (or use the button below)") });
+        set({ swFollow: true, hint: T('🏃 저절로 앞으로 걸어가요! ◀ ▶ (밀기/조이스틱)로 가시덤불을 피하고, 점프로 넘어가! 백설공주가 뒤따라와요.', '🏃 You walk forward by yourself! Steer ◀ ▶ (swipe / stick) around the thorns, or jump over! Snow White follows you.') });
         get().say([{ speaker: SPK.snow, text: T(`고마워, ${h.call}! 같이 가자!`, `Thank you, ${n.en}! Let's go together!`) }]);
         break;
       case 'sw-flower':
@@ -464,6 +469,18 @@ export const useGame = create<State>((set, get) => ({
     }
     if (name === 'Queen') { advance(); s.say(told!); return; }
     const d = DWARFS.find((d) => d.node === name);
+    if (d && s.scene === 'cottage' && !s.talked['welcome']) {
+      // first chat inside the cottage = the dwarfs' welcome (Doc speaks for everyone)
+      set({ talked: { ...s.talked, welcome: true, [name]: true }, talker: name, hint: null });
+      s.say([
+        { speaker: name === 'Doc' ? d.name : dw('Doc'), text: T('오호! 손님이 왔구나! 일곱 난쟁이의 집에 온 걸 환영해!', 'Oho! We have a guest! Welcome to the home of the seven dwarfs!') },
+        { speaker: SPK.snow, text: T('난쟁이들아, 나를 여기서 지내게 해 줄래? 청소도 하고 요리도 할게!', 'Dear dwarfs, may I stay here with you? I\'ll clean and cook for you!') },
+        { speaker: dw('Doc'), text: T('물론이지! 대신 약속해. 우리가 광산에 일하러 간 동안 모르는 사람에게는 절대 문을 열어 주면 안 돼!', 'Of course! But promise us: while we\'re away at the mine, never open the door to a stranger!') },
+        { speaker: SPK.snow, text: T('약속할게! 자, 의자에 앉아서 쉬자. 난쟁이들한테 말을 걸면 재미있는 이야기를 들려줄 거야.', "I promise! Now let's sit and rest. Talk to the dwarfs — they have stories to tell.") },
+        ...(s.seek === 'off' ? [SEEK_ASK(h.call, n.en)] : []),
+      ]);
+      return;
+    }
     if (d) {
       const first = !s.talked[name];
       set({ talked: { ...s.talked, [name]: true } });
@@ -514,7 +531,6 @@ export const useGame = create<State>((set, get) => ({
       s.say([
         { speaker: SPK.snow, text: T('하암… 내가 잠들었었니? 어? 다들 왜 그렇게 쳐다봐?', 'Yawn… was I asleep? Huh? Why is everyone staring at me?') },
         { speaker: dw('Doc'), text: T(`만세! 백설공주가 깨어났다! ${h.call}, 네가 도와준 덕분이야!`, `Hooray! Snow White is awake! ${n.en}, it's all thanks to your help!`) },
-        { speaker: SPK.story, text: T('원래 동화에서는 지나가던 왕자님이 잠든 백설공주를 깨워 주었대요. 오늘은 친구들이 모두 힘을 합쳐 깨웠네요!', 'In the original tale, a passing prince woke the sleeping Snow White. Today, all the friends worked together to wake her up!') },
         { speaker: SPK.snow, text: T(`고마워, ${h.call}! 다음엔 모르는 사람이 주는 사과는 절대 먹지 않을게. 약속!`, `Thank you, ${n.en}! I'll never eat an apple from a stranger again. Promise!`), choices: [{ id: 'end-woke', label: T('약속! 🤙', 'Promise! 🤙') }] },
       ]);
     } else set({ taps });

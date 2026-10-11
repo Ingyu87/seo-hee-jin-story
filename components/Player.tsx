@@ -8,6 +8,7 @@ import { rigArms, poseArms, Pose } from './rig';
 import { useModel } from './models';
 import { sfx } from './audio';
 import { stick } from './touch';
+import { convoHidden } from './common';
 
 export type World = {
   scale: number;
@@ -18,7 +19,29 @@ export type World = {
   grounds: React.MutableRefObject<THREE.Object3D[]>;
   seat?: (name: string) => { pos: THREE.Vector3; quat: THREE.Quaternion } | null;
   onStep?: (pos: THREE.Vector3) => void;
+  /** run-game mode: forward speed along -z (the player only steers left/right, ↓ = stop), or null when off */
+  autoRun?: () => number | null;
+  /** auto-run bumped into something (e.g. thorns) */
+  onBump?: () => void;
 };
+/** Recent player positions (with hop height) — Snow White follows this trail in the run-game escort. */
+export const trail: { x: number; z: number; y: number }[] = [];
+export const runMode = { on: false };
+// run-game steering by swiping: drag left / right anywhere on the 3D view
+if (typeof window !== 'undefined') {
+  let sx: number | null = null; let id = -1;
+  window.addEventListener('pointerdown', (e) => {
+    if (!runMode.on || !(e.target as HTMLElement)?.closest?.('canvas')) return;
+    sx = e.clientX; id = e.pointerId;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (sx === null || e.pointerId !== id || !runMode.on) return;
+    const v = Math.max(-1, Math.min(1, (e.clientX - sx) / 45));
+    stick.x = Math.abs(v) > 0.2 ? v : 0; stick.z = 0; stick.active = Math.abs(v) > 0.2;
+  });
+  const up = (e: PointerEvent) => { if (e.pointerId !== id || sx === null) return; sx = null; stick.x = 0; stick.active = false; };
+  window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
 
 const keys: Record<string, boolean> = {};
 if (typeof window !== 'undefined') {
@@ -82,6 +105,7 @@ export function Player({ world }: { world: World }) {
     const [x, y, z] = world.spawn;
     player.pos.set(x, y, z);
     player.rotY = world.spawnRot;
+    trail.length = 0;
   }, [spawnKey, world]);
 
   useFrame((state, dt) => {
@@ -96,7 +120,14 @@ export function Player({ world }: { world: World }) {
       kx = stick.x; kz = stick.z; analog = Math.max(0.35, Math.min(1, Math.hypot(kx, kz)));
     }
     const locked = g.sleeping || g.lines.length > 0 || !!g.mini;
-    if (!locked && (kx || kz)) {
+    const run = !locked && world.autoRun ? world.autoRun() : null;
+    if (runMode.on !== !!run) { runMode.on = !!run; useGame.setState({ running: runMode.on }); }
+    if (run && kz < 0.5) {
+      // run-game escort: keep walking up the path automatically; keys / stick / swipe steer left-right
+      if (g.target) useGame.setState({ target: null, pending: null });
+      dx = Math.abs(kx) > 0.15 ? kx * 1.1 : 0; dz = -1; analog = run / world.speed;
+    } else if (run) { dx = 0; dz = 0; }
+    else if (!locked && (kx || kz)) {
       if (g.sitting) g.standUp();
       if (g.target) useGame.setState({ target: null, pending: null });
       dx = kx; dz = kz;
@@ -113,6 +144,7 @@ export function Player({ world }: { world: World }) {
       const step = Math.min(world.speed * analog * dt, len);
       const nx = p.x + (dx / len) * step, nz = p.z + (dz / len) * step;
       if (!world.blocked(nx, nz)) { p.x = nx; p.z = nz; }
+      else if (run) { world.onBump?.(); if (!world.blocked(nx, p.z)) p.x = nx; }
       else if (!world.blocked(nx, p.z)) p.x = nx;
       else if (!world.blocked(p.x, nz)) p.z = nz;
       else if (g.target) useGame.setState({ target: null, pending: null });
@@ -134,6 +166,8 @@ export function Player({ world }: { world: World }) {
       }
     }
     p.y = groundY(world.grounds.current, p.x, p.z, p.y);
+    const last = trail[trail.length - 1];
+    if (!last || Math.hypot(last.x - p.x, last.z - p.z) > 0.08) { trail.push({ x: p.x, z: p.z, y: player.jumpY }); if (trail.length > 80) trail.shift(); }
     // jump / hop
     if (player.vy !== 0 || player.jumpY > 0) {
       player.vy -= 16 * dt;
@@ -254,6 +288,7 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
     }
     if (moving) s.walkT += dt;
     g.position.x = p.x; g.position.z = p.z;
+    g.visible = visible && !convoHidden.has(name); // a bystander blocking the conversation shot steps out of view
     g.position.y = grounds ? groundY(grounds.current, p.x, p.z, position[1]) : position[1];
     poseArms(arms, moving ? 'walk' : speaking ? (gs.lineIdx === 0 ? 'wave' : 'talk') : near ? 'wave' : 'idle', moving ? s.walkT * 0.75 : t, 0.15, phase);
     const body = g.children[0];

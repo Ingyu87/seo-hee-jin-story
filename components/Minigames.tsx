@@ -27,24 +27,38 @@ function Flowers() {
   const [score, setScore] = useState(0);
   const [items, setItems] = useState<{ id: number; x: number; y: number; e: string }[]>([]);
   const [over, setOver] = useState(false);
+  const [started, setStarted] = useState(false); // the clock only runs after the child presses Start
   const idRef = useRef(0);
-  const spawn = () => ({ id: ++idRef.current, x: 8 + Math.random() * 84, y: 10 + Math.random() * 78, e: FLOWER_EMOJI[(Math.random() * 4) | 0] });
+  const spawn = () => ({ id: ++idRef.current, x: 8 + Math.random() * 84, y: 10 + Math.random() * 78, e: Math.random() < 0.12 ? '🌟' : FLOWER_EMOJI[(Math.random() * 4) | 0] }); // 🌟 = golden flower, worth 2
   useEffect(() => { setItems([spawn(), spawn(), spawn()]); }, []);
   useEffect(() => {
-    if (over) return;
+    if (over || !started) return;
     const t = setInterval(() => setLeft((l) => { if (l <= 1) { setOver(true); return 0; } return l - 1; }), 1000);
     return () => clearInterval(t);
-  }, [over]);
-  const pick = (id: number) => { if (over) return; sfx('tap'); setScore((s) => s + 1); setItems((it) => it.filter((i) => i.id !== id).concat(spawn())); };
+  }, [over, started]);
+  const [pops, setPops] = useState<{ id: number; x: number; y: number; t: string }[]>([]);
+  const pick = (id: number) => {
+    if (over || !started) return;
+    const f = items.find((i) => i.id === id); if (!f) return;
+    const gold = f.e === '🌟';
+    sfx(gold ? 'sparkle' : 'tap');
+    setScore((s) => s + (gold ? 2 : 1));
+    setPops((p) => [...p.slice(-6), { id: f.id, x: f.x, y: f.y, t: gold ? '+2 ✨' : '+1' }]);
+    setItems((it) => it.filter((i) => i.id !== id).concat(spawn()));
+  };
+  useEffect(() => { if (over) sfx(score >= 10 ? 'fanfare' : 'wake'); }, [over]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Shell title={T('🌸 꽃 따기', '🌸 Flower picking')} sub={T(`15초 안에 꽃 10송이를 따 보자!`, 'Pick 10 flowers in 15 seconds!')}
-      footer={over && <button className="start" onClick={() => useGame.getState().endMini('flowers', score >= 10, score)}>{tx(doneTx)}</button>}>
-      <div className="mini-stats"><span>⏱ {left}</span><span>🌸 {score}/10</span></div>
+      footer={over ? <button className="start" onClick={() => useGame.getState().endMini('flowers', score >= 10, score)}>{tx(doneTx)}</button>
+        : !started ? <button className="start" onClick={() => { sfx('click'); setStarted(true); }}>{tx(startTx)}</button> : null}>
+      <div className="mini-stats"><span className={started && !over && left <= 5 ? 'hurry' : ''}>⏱ {left}</span><span>🌸 {score}/10</span></div>
       <div className="field meadow">
-        {!over && items.map((f) => (
+        {pops.map((p) => <span key={p.id} className="pop-score" style={{ left: `${p.x}%`, top: `${p.y}%` }}>{p.t}</span>)}
+        {started && !over && items.map((f) => (
           <button key={f.id} className="flower" style={{ left: `${f.x}%`, top: `${f.y}%` }} onPointerDown={() => pick(f.id)}>{f.e}</button>
         ))}
-        {over && <div className="mini-result">{score >= 10 ? '⭐' : '🌸'} {score}</div>}
+        {over && <div className="mini-result">{score >= 10 ? '💐' : '🌸'} {score}<small>{tx(score >= 10 ? T('예쁜 꽃다발 완성!', 'A lovely bouquet!') : T('예쁘다! 백설공주가 좋아할 거야', 'Pretty! Snow White will love them'))}</small></div>}
+        {!started && <div className="mini-tip">{tx(T('🌸 꽃을 손가락으로 톡! 반짝 🌟 꽃은 2송이! 준비되면 “시작!”', '🌸 Tap the flowers! A shiny 🌟 counts as 2! Press "Start!" when ready'))}</div>}
       </div>
     </Shell>
   );
