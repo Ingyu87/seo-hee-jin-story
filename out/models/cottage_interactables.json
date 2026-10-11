@@ -1,0 +1,189 @@
+{
+  "units": "meters; locations in Blender Z-up (glTF/three.js: x, z, -y)",
+  "naming": "Door = hinge pivot (rotate local Z/up); ChairN_SitPoint = sit anchor; Apple = pick target",
+  "interactables": {
+    "Apple": {
+      "interactive": "pick",
+      "prompt": "Pick up the apple",
+      "onUse": "eat",
+      "story": "poisoned_apple",
+      "location_blender_zup": [
+        -1.2,
+        -0.05,
+        1.12
+      ],
+      "children": [
+        "Apple_Body",
+        "Apple_Leaf",
+        "Apple_Stem"
+      ]
+    },
+    "Chair1": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 1,
+      "location_blender_zup": [
+        -1.45,
+        -0.7,
+        0.2
+      ],
+      "children": [
+        "Chair1_Back",
+        "Chair1_Cushion",
+        "Chair1_Heart",
+        "Chair1_Leg-0.24-0.22",
+        "Chair1_Leg-0.240.22",
+        "Chair1_Leg0.24-0.22",
+        "Chair1_Leg0.240.22",
+        "Chair1_Seat",
+        "Chair1_SitPoint"
+      ]
+    },
+    "Chair2": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 2,
+      "location_blender_zup": [
+        -0.3,
+        -0.7,
+        0.2
+      ],
+      "children": [
+        "Chair2_Back",
+        "Chair2_Cushion",
+        "Chair2_Heart",
+        "Chair2_Leg-0.24-0.22",
+        "Chair2_Leg-0.240.22",
+        "Chair2_Leg0.24-0.22",
+        "Chair2_Leg0.240.22",
+        "Chair2_Seat",
+        "Chair2_SitPoint"
+      ]
+    },
+    "Chair3": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 3,
+      "location_blender_zup": [
+        0.85,
+        -0.7,
+        0.2
+      ],
+      "children": [
+        "Chair3_Back",
+        "Chair3_Cushion",
+        "Chair3_Heart",
+        "Chair3_Leg-0.24-0.22",
+        "Chair3_Leg-0.240.22",
+        "Chair3_Leg0.24-0.22",
+        "Chair3_Leg0.240.22",
+        "Chair3_Seat",
+        "Chair3_SitPoint"
+      ]
+    },
+    "Chair4": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 4,
+      "location_blender_zup": [
+        -1.45,
+        1.3,
+        0.2
+      ],
+      "children": [
+        "Chair4_Back",
+        "Chair4_Cushion",
+        "Chair4_Heart",
+        "Chair4_Leg-0.24-0.22",
+        "Chair4_Leg-0.240.22",
+        "Chair4_Leg0.24-0.22",
+        "Chair4_Leg0.240.22",
+        "Chair4_Seat",
+        "Chair4_SitPoint"
+      ]
+    },
+    "Chair5": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 5,
+      "location_blender_zup": [
+        -0.3,
+        1.3,
+        0.2
+      ],
+      "children": [
+        "Chair5_Back",
+        "Chair5_Cushion",
+        "Chair5_Heart",
+        "Chair5_Leg-0.24-0.22",
+        "Chair5_Leg-0.240.22",
+        "Chair5_Leg0.24-0.22",
+        "Chair5_Leg0.240.22",
+        "Chair5_Seat",
+        "Chair5_SitPoint"
+      ]
+    },
+    "Chair6": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 6,
+      "location_blender_zup": [
+        0.85,
+        1.3,
+        0.2
+      ],
+      "children": [
+        "Chair6_Back",
+        "Chair6_Cushion",
+        "Chair6_Heart",
+        "Chair6_Leg-0.24-0.22",
+        "Chair6_Leg-0.240.22",
+        "Chair6_Leg0.24-0.22",
+        "Chair6_Leg0.240.22",
+        "Chair6_Seat",
+        "Chair6_SitPoint"
+      ]
+    },
+    "Chair7": {
+      "interactive": "sit",
+      "prompt": "Sit down",
+      "seatIndex": 7,
+      "location_blender_zup": [
+        2.15,
+        0.3,
+        0.2
+      ],
+      "children": [
+        "Chair7_Back",
+        "Chair7_Cushion",
+        "Chair7_Heart",
+        "Chair7_Leg-0.24-0.22",
+        "Chair7_Leg-0.240.22",
+        "Chair7_Leg0.24-0.22",
+        "Chair7_Leg0.240.22",
+        "Chair7_Seat",
+        "Chair7_SitPoint"
+      ]
+    },
+    "Door": {
+      "interactive": "open",
+      "prompt": "Open the door",
+      "axis": "Z",
+      "openAngleDeg": -100,
+      "closedAngleDeg": 0,
+      "location_blender_zup": [
+        -3.875,
+        -1.825,
+        0.2
+      ],
+      "children": [
+        "Door_Knob",
+        "Door_Panel",
+        "Door_Plank0",
+        "Door_Plank1",
+        "Door_Plank2",
+        "Door_Window"
+      ]
+    }
+  }
+}
