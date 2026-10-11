@@ -1,6 +1,7 @@
 'use client';
 import * as THREE from 'three';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
+import { rigArms, poseArms } from './rig';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useGame, HEROES, HeroId, player } from './store';
 import { useModel } from './models';
@@ -12,9 +13,11 @@ function Sister({ id, x }: { id: HeroId; x: number }) {
   const hero = useGame((s) => s.hero);
   const ref = useRef<THREE.Group>(null!);
   const ring = useRef<THREE.Mesh>(null!);
+  const arms = useMemo(() => rigArms(model), [model]);
   useFrame((st) => {
     const t = st.clock.elapsedTime;
     const sel = hero === id;
+    poseArms(arms, sel ? 'cheer' : 'idle', t, 0.15, x);
     ref.current.position.y = sel ? Math.abs(Math.sin(t * 3.2)) * 0.18 : Math.sin(t * 1.5 + x) * 0.02;
     ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, sel ? Math.sin(t * 1.2) * 0.25 : -x * 0.12, 0.08);
     const m = ring.current.material as THREE.MeshBasicMaterial;

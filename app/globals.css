@@ -154,3 +154,66 @@ button { font-family: inherit; cursor: pointer; }
 .hud { z-index: 16777300; }
 .flower { animation: none; }
 @keyframes bloom { from { transform: translate(-50%, -50%) scale(.4); } }
+
+/* ---- on-screen touch controls (phones/tablets) ---- */
+.hud > .touchpad { position: absolute; inset: 0; pointer-events: none; }
+.joy, .actbtn, .jumpbtn { position: absolute; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.joy { left: max(14px, env(safe-area-inset-left)); bottom: max(18px, calc(env(safe-area-inset-bottom) + 8px)); width: 132px; height: 132px; border-radius: 50%;
+  background: radial-gradient(circle, #fffaf3aa 0 55%, #fffaf366 56%); border: 4px solid #ffffffcc; box-shadow: 0 6px 18px #0003; }
+.joy.on { background: radial-gradient(circle, #ffe4eecc 0 55%, #fffaf388 56%); }
+.joy-arrows { position: absolute; inset: 6px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; color: #e24a84aa; font-size: 14px; line-height: 1; pointer-events: none; }
+.joy-arrows i { position: absolute; top: 50%; transform: translateY(-50%); font-style: normal; }
+.joy-arrows i:first-of-type { left: 0; } .joy-arrows i:last-of-type { right: 0; }
+.joy-knob { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; border-radius: 50%; transform: translate(-50%, -50%);
+  background: linear-gradient(#ff9fc0, #e24a84); border: 4px solid #fff; box-shadow: 0 4px 10px #0004; pointer-events: none; }
+.actbtn { right: max(14px, env(safe-area-inset-right)); bottom: max(26px, calc(env(safe-area-inset-bottom) + 16px)); width: 96px; height: 96px; border-radius: 50%;
+  border: 4px solid #fff; background: #fffaf3cc; box-shadow: 0 6px 0 #d7c4ad, 0 10px 20px #0003; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; color: #8d6e63; opacity: .75; }
+.actbtn.ready { background: linear-gradient(#ffe082, #ffca28); color: #5d4037; opacity: 1; box-shadow: 0 6px 0 #e0a800, 0 10px 20px #0003; animation: actpulse 1.1s ease-in-out infinite; }
+.actbtn:active { transform: translateY(3px); }
+.act-ico { font-size: 36px; line-height: 1; }
+.actbtn small { font-weight: 800; font-size: 12px; margin-top: 2px; }
+.jumpbtn { right: calc(max(14px, env(safe-area-inset-right)) + 104px); bottom: max(18px, calc(env(safe-area-inset-bottom) + 8px)); width: 72px; height: 72px; border-radius: 50%;
+  border: 4px solid #fff; background: linear-gradient(#b3e5fc, #4fc3f7); color: #01579b; box-shadow: 0 5px 0 #0288d1, 0 8px 16px #0003; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; }
+.jumpbtn .act-ico { font-size: 26px; }
+.jumpbtn:active { transform: translateY(3px); }
+.act-prompt { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: calc(max(26px, calc(env(safe-area-inset-bottom) + 16px)) + 106px); max-width: 60vw;
+  background: #fffaf3f2; border: 3px solid #ffd54f; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; box-shadow: 0 4px 12px #0002; animation: pop2 .2s ease-out; }
+.act-prompt.desk { right: auto; left: 50%; transform: translateX(-50%); bottom: max(22px, env(safe-area-inset-bottom)); font-size: 16px; animation: none; }
+.act-prompt kbd { display: inline-block; min-width: 24px; padding: 1px 7px; margin-right: 4px; border-radius: 6px; background: #5d4037; color: #fff; font-family: inherit; font-size: 13px; }
+@keyframes pop2 { from { opacity: 0; transform: translateY(6px); } }
+.iconbtn.off { opacity: .6; }
+@keyframes actpulse { 50% { box-shadow: 0 6px 0 #e0a800, 0 0 0 8px #ffd54f66; } }
+/* the "go to cottage / stand up" shortcut sits above the action button on touch devices */
+body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) + 16px)) + 150px); }
+@media (max-height: 460px) {
+  .joy { width: 112px; height: 112px; bottom: max(12px, env(safe-area-inset-bottom)); }
+  .joy-knob { width: 50px; height: 50px; }
+  .actbtn { width: 80px; height: 80px; bottom: max(18px, calc(env(safe-area-inset-bottom) + 8px)); }
+  .act-ico { font-size: 30px; }
+  .jumpbtn { width: 62px; height: 62px; right: calc(max(14px, env(safe-area-inset-right)) + 88px); bottom: max(12px, env(safe-area-inset-bottom)); }
+  .jumpbtn .act-ico { font-size: 22px; }
+  .act-prompt { bottom: calc(max(18px, calc(env(safe-area-inset-bottom) + 8px)) + 88px); }
+  body.touch .shortcut { bottom: calc(max(18px, calc(env(safe-area-inset-bottom) + 8px)) + 88px); right: auto; left: 50%; transform: translateX(-50%); }
+}
+
+/* toolbar got a narration (🗣️) button */
+.scene-forest .topbar, .scene-cottage .topbar { right: 322px; }
+@media (max-width: 560px) { .scene-forest .topbar, .scene-cottage .topbar { right: 10px; } }
+@media (min-width: 561px) and (max-width: 980px) {
+  .scene-forest .place, .scene-cottage .place { display: none; }
+  .who, .ghost, .seek, .starcount { white-space: nowrap; }
+  .scene-forest .topbar .ghost, .scene-cottage .topbar .ghost { margin-left: 0; }
+}
+/* ---- picture help ---- */
+.help-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.help-tabs button { flex: 1; border: 3px solid #f3c6d6; background: #fff; border-radius: 999px; padding: 8px; font-weight: 800; font-size: 15px; color: #8d6e63; }
+.help-tabs button.on { background: #e24a84; border-color: #e24a84; color: #fff; }
+.help-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.help-list li { display: flex; gap: 12px; align-items: center; background: #fff; border-radius: 16px; padding: 10px; }
+.help-list li > img { flex: none; max-width: 46%; height: auto; border-radius: 12px; box-shadow: 0 2px 8px #0002; }
+.help-list b { font-size: 16px; color: #5d4037; }
+.help-list p { margin: 3px 0 0; font-size: 14px; line-height: 1.45; color: #6d4c41; font-weight: 600; }
+.help-list .keys { flex: none; display: flex; flex-wrap: wrap; gap: 4px; width: 96px; justify-content: center; }
+.help-list kbd { display: inline-block; min-width: 30px; padding: 5px 8px; border-radius: 8px; background: #5d4037; color: #fff; font-family: inherit; font-weight: 800; font-size: 14px; text-align: center; box-shadow: 0 3px 0 #3e2723; }
+.help-shot { display: block; margin-top: 6px; max-width: 100%; border-radius: 10px; }
+@media (max-width: 420px) { .help-list li { flex-direction: column; align-items: flex-start; } .help-list li > img { max-width: 100%; } }

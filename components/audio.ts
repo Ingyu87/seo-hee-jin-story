@@ -5,7 +5,7 @@
  * - SFX: short generated tones/noise for walk, talk, door, sit, apple, UI click, etc.
  * Audio starts on the first user tap (browser autoplay rules) and respects the mute toggle.
  */
-export type Sfx = 'click' | 'step' | 'talk' | 'doorOpen' | 'doorClose' | 'sit' | 'pickup' | 'crunch' | 'sleep' | 'tap' | 'wake' | 'sparkle' | 'poof' | 'fanfare';
+export type Sfx = 'click' | 'step' | 'talk' | 'doorOpen' | 'doorClose' | 'sit' | 'pickup' | 'crunch' | 'sleep' | 'tap' | 'wake' | 'sparkle' | 'poof' | 'fanfare' | 'jump';
 
 let ctx: AudioContext | null = null;
 let master: GainNode, music: GainNode, fx: GainNode;
@@ -78,6 +78,7 @@ export function sfx(name: Sfx) {
     case 'pickup': [76, 81, 88].forEach((m, i) => tone(hz(m), t + i * 0.07, 0.25, { type: 'triangle', vol: 0.3 })); break;
     case 'crunch': for (let i = 0; i < 4; i++) noise(t + i * 0.055, 0.05, { vol: 0.45, freq: 2500 + Math.random() * 1500, q: 2 }); break;
     case 'sleep': [72, 69, 65, 60].forEach((m, i) => tone(hz(m), t + i * 0.28, 0.5, { type: 'sine', vol: 0.25 })); break;
+    case 'jump': tone(hz(67), t, 0.22, { type: 'sine', vol: 0.35, to: hz(79) }); break;
     case 'tap': tone(hz(84 + Math.floor(Math.random() * 5)), t, 0.15, { type: 'triangle', vol: 0.3 }); break;
     case 'wake': [72, 76, 79, 84, 88].forEach((m, i) => tone(hz(m), t + i * 0.08, 0.35, { type: 'triangle', vol: 0.3 })); break;
     case 'sparkle': [88, 91, 96].forEach((m, i) => tone(hz(m), t + i * 0.06, 0.3, { type: 'sine', vol: 0.2 })); break;

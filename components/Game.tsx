@@ -1,6 +1,7 @@
 'use client';
 import { Suspense, useEffect } from 'react';
 import { unlockAudio } from './audio';
+import { unlockSpeech } from './speech';
 import { Canvas, useThree, advance } from '@react-three/fiber';
 import { useProgress } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,7 +20,8 @@ function Loader() {
 
 function ExposeGl() {
   const gl = useThree((s) => s.gl);
-  if (typeof window !== 'undefined') (window as unknown as { __snow: Record<string, unknown> }).__snow.gl = gl;
+  const scene = useThree((s) => s.scene);
+  if (typeof window !== 'undefined') Object.assign((window as unknown as { __snow: Record<string, unknown> }).__snow, { gl, scene });
   return null;
 }
 
@@ -35,7 +37,7 @@ export default function Game() {
   const key = useGame((s) => s.spawnKey);
   // browsers only allow audio after a user gesture: unlock + start BGM on the first tap / key press
   useEffect(() => {
-    const go = () => { unlockAudio(); window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
+    const go = () => { unlockAudio(); unlockSpeech(); window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
     window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
     return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
   }, []);

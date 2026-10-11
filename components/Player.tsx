@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { useGame, player, HEROES } from './store';
+import { useGame, player, HEROES, jump, npcPos, npcGoal } from './store';
+import { rigArms, poseArms, Pose } from './rig';
 import { useModel } from './models';
 import { sfx } from './audio';
+import { stick } from './touch';
 
 export type World = {
   scale: number;
@@ -22,6 +24,12 @@ const keys: Record<string, boolean> = {};
 if (typeof window !== 'undefined') {
   window.addEventListener('keydown', (e) => (keys[e.key.toLowerCase()] = true));
   window.addEventListener('keyup', (e) => (keys[e.key.toLowerCase()] = false));
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== ' ' || e.repeat) return;
+    const t = e.target as HTMLElement | null;
+    if (t && /^(BUTTON|INPUT|TEXTAREA)$/.test(t.tagName)) return;
+    if (jump()) e.preventDefault();
+  });
 }
 
 const ray = new THREE.Raycaster();
@@ -58,15 +66,14 @@ export function Player({ world }: { world: World }) {
   const outer = useRef<THREE.Group>(null!);
   const inner = useRef<THREE.Group>(null!);
   const rig = useMemo(() => rigLegs(model), [model]);
+  const arms = useMemo(() => rigArms(model), [model]);
   const apple = useMemo(() => {
     const a = appleModel.getObjectByName('Apple');
     const g = new THREE.Group();
     if (a) { const c = a.clone(true); c.position.set(0, 0, 0); g.add(c); }
     return g;
   }, [appleModel]);
-  const sleeping = useGame((s) => s.sleeping);
   const appleState = useGame((s) => s.apple);
-  const taps = useGame((s) => s.taps);
   const spawnKey = useGame((s) => s.spawnKey);
   const t0 = useRef(0);
   const stepT = useRef(0);
@@ -82,14 +89,19 @@ export function Player({ world }: { world: World }) {
     const g = useGame.getState();
     const p = player.pos;
     let dx = 0, dz = 0;
-    const kx = (keys['arrowright'] || keys['d'] ? 1 : 0) - (keys['arrowleft'] || keys['a'] ? 1 : 0);
-    const kz = (keys['arrowdown'] || keys['s'] ? 1 : 0) - (keys['arrowup'] || keys['w'] ? 1 : 0);
+    let kx = (keys['arrowright'] || keys['d'] ? 1 : 0) - (keys['arrowleft'] || keys['a'] ? 1 : 0);
+    let kz = (keys['arrowdown'] || keys['s'] ? 1 : 0) - (keys['arrowup'] || keys['w'] ? 1 : 0);
+    let analog = 1; // on-screen joystick: same axes as the keys, with analog speed
+    if (!kx && !kz && stick.active && Math.hypot(stick.x, stick.z) > 0.15) {
+      kx = stick.x; kz = stick.z; analog = Math.max(0.35, Math.min(1, Math.hypot(kx, kz)));
+    }
     const locked = g.sleeping || g.lines.length > 0 || !!g.mini;
     if (!locked && (kx || kz)) {
       if (g.sitting) g.standUp();
       if (g.target) useGame.setState({ target: null, pending: null });
       dx = kx; dz = kz;
     } else if (!locked && g.target && !g.sitting) {
+      analog = 1;
       dx = g.target[0] - p.x; dz = g.target[1] - p.z;
       const d = Math.hypot(dx, dz);
       const stopAt = g.pending ? 0.2 : 0.08;
@@ -98,7 +110,7 @@ export function Player({ world }: { world: World }) {
     const len = Math.hypot(dx, dz);
     player.moving = len > 0.001;
     if (player.moving) {
-      const step = Math.min(world.speed * dt, len);
+      const step = Math.min(world.speed * analog * dt, len);
       const nx = p.x + (dx / len) * step, nz = p.z + (dz / len) * step;
       if (!world.blocked(nx, nz)) { p.x = nx; p.z = nz; }
       else if (!world.blocked(nx, p.z)) p.x = nx;
@@ -111,8 +123,29 @@ export function Player({ world }: { world: World }) {
       world.onStep?.(p);
       stepT.current += dt;
       if (stepT.current > 0.32) { stepT.current = 0; sfx('step'); }
-    } else stepT.current = 0.25;
+    } else {
+      stepT.current = 0.25;
+      // during a conversation, turn to face whoever is talking
+      const tk = g.lines.length && g.talker ? npcPos[g.talker] : null;
+      if (tk && !g.sitting && tk.distanceTo(p) < 5) {
+        let diff = Math.atan2(tk.x - p.x, tk.z - p.z) - player.rotY;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        player.rotY += diff * Math.min(1, dt * 6);
+      }
+    }
     p.y = groundY(world.grounds.current, p.x, p.z, p.y);
+    // jump / hop
+    if (player.vy !== 0 || player.jumpY > 0) {
+      player.vy -= 16 * dt;
+      player.jumpY = Math.max(0, player.jumpY + player.vy * dt);
+      if (player.jumpY === 0 && player.vy < 0) { player.vy = 0; sfx('step'); }
+    }
+    const air = player.jumpY > 0.001;
+    const line = g.lines[g.lineIdx];
+    const heroTalking = !!line && line.speaker.ko === HEROES[g.hero].name.ko;
+    const pose: Pose = g.sitting ? 'sit' : g.sleeping ? 'idle' : air ? 'jump' : player.moving ? 'walk'
+      : g.apple === 'held' ? 'hold' : heroTalking ? 'wave' : line ? 'talk' : 'idle';
+    poseArms(arms, pose, t0.current, 0.25);
 
     const o = outer.current, i = inner.current;
     t0.current += dt;
@@ -127,14 +160,12 @@ export function Player({ world }: { world: World }) {
     } else {
       rig.hip.rotation.x = THREE.MathUtils.lerp(rig.hip.rotation.x, player.moving ? Math.sin(t0.current * 12) * 0.25 : 0, 0.3);
       o.position.copy(p);
+      o.position.y += player.jumpY;
       o.rotation.set(0, player.rotY, 0);
-      if (g.sleeping) {
-        i.rotation.set(0, 0, THREE.MathUtils.lerp(i.rotation.z, Math.PI / 2, 0.08));
-        i.position.y = 0.45 * world.scale;
-      } else {
+      {
         i.rotation.z = THREE.MathUtils.lerp(i.rotation.z, player.moving ? Math.sin(t0.current * 12) * 0.06 : 0, 0.3);
         i.rotation.x = 0;
-        i.position.y = player.moving ? Math.abs(Math.sin(t0.current * 12)) * 0.08 * world.scale : Math.sin(t0.current * 2) * 0.01;
+        i.position.y = player.moving && player.jumpY === 0 ? Math.abs(Math.sin(t0.current * 12)) * 0.08 * world.scale : Math.sin(t0.current * 2) * 0.01;
       }
     }
   });
@@ -145,43 +176,108 @@ export function Player({ world }: { world: World }) {
         <primitive object={model} />
         {appleState === 'held' && <primitive object={apple} position={[0.05, 1.15, 0.55]} scale={1.6} />}
       </group>
-      {sleeping && (
-        <Html position={[0, 1.6 * world.scale, 0]} center>
-          <div className="zzz">Zzz… ({taps}/5)</div>
-        </Html>
-      )}
     </group>
   );
 }
 
-/** Static/idle NPC with gentle breathing, click-to-talk, optional look-at-player. */
-export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, onClick, label, visible = true, grounds }: {
+/**
+ * NPC: wanders a little around its home spot (procedural walk: waddle + bob + arm swing), stops and turns to
+ * the player when they come close or while talking, click-to-talk.
+ */
+export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, onClick, label, visible = true, grounds, wander = 0, blocked, speed = 0.7, asleep = false }: {
   object: THREE.Object3D; name: string; position: [number, number, number]; rotY?: number; scale?: number; face?: boolean;
   onClick?: (name: string) => void; label?: string; visible?: boolean; grounds?: React.MutableRefObject<THREE.Object3D[]>;
+  wander?: number; blocked?: (x: number, z: number) => boolean; speed?: number; asleep?: boolean;
 }) {
   const ref = useRef<THREE.Group>(null!);
   const phase = useMemo(() => Math.random() * 6, []);
-  useFrame((st) => {
+  const arms = useMemo(() => rigArms(object), [object]);
+  const taps = useGame((s) => (asleep ? s.taps : 0));
+  const home = useMemo(() => new THREE.Vector3(...position), [position[0], position[1], position[2]]); // eslint-disable-line react-hooks/exhaustive-deps
+  const w = useRef({ pos: home.clone(), target: null as THREE.Vector3 | null, wait: 1 + Math.random() * 3, walkT: 0 });
+  useEffect(() => { npcPos[name] = w.current.pos; return () => { if (npcPos[name] === w.current.pos) delete npcPos[name]; }; }, [name]);
+  useFrame((st, dt) => {
     const g = ref.current;
     if (!g) return;
+    dt = Math.min(dt, 0.2);
     const t = st.clock.elapsedTime + phase;
-    if (grounds) g.position.y = groundY(grounds.current, g.position.x, g.position.z, position[1]);
-    g.children[0].position.y = Math.abs(Math.sin(t * 1.6)) * 0.03 * scale;
-    if (face) {
-      const want = Math.atan2(player.pos.x - g.position.x, player.pos.z - g.position.z);
-      const d = Math.hypot(player.pos.x - g.position.x, player.pos.z - g.position.z);
-      const target = d < 4.5 ? want : rotY;
-      let diff = target - g.rotation.y;
+    const gs = useGame.getState();
+    const s = w.current; const p = s.pos;
+    const speaking = gs.lines.length > 0 && gs.talker === name;
+    const dPlayer = Math.hypot(player.pos.x - p.x, player.pos.z - p.z);
+    const near = dPlayer < 1.9;
+    const stop = speaking || near || gs.lines.length > 0 || !!gs.mini || gs.sleeping;
+    let moving = false; let wantRot: number | null = null;
+    const goal = npcGoal[name];
+    if (goal && !gs.mini) {
+      // scripted story walk (e.g. the old woman comes to the door, dwarfs head off to the mine)
+      const wp = goal.path[goal.i ?? 0];
+      const tx = wp === 'player' ? player.pos.x : wp[0], tz = wp === 'player' ? player.pos.z : wp[1];
+      const d = new THREE.Vector3(tx - p.x, 0, tz - p.z); const len = d.length();
+      const reach = wp === 'player' ? 1.3 : 0.08;
+      if (len <= reach) {
+        goal.i = (goal.i ?? 0) + 1;
+        if (goal.i >= goal.path.length) { npcGoal[name] = undefined; s.target = null; s.wait = 2; goal.done?.(); }
+      } else {
+        const step = Math.min(len - reach + 0.01, (goal.speed ?? 1.6) * dt);
+        p.x += (d.x / len) * step; p.z += (d.z / len) * step; moving = true; wantRot = Math.atan2(d.x, d.z);
+      }
+    } else if (wander > 0 && !stop) {
+      if (!s.target) {
+        s.wait -= dt;
+        if (s.wait <= 0) {
+          for (let i = 0; i < 8; i++) {
+            const a = Math.random() * Math.PI * 2, r = wander * (0.35 + Math.random() * 0.65);
+            const c = new THREE.Vector3(home.x + Math.cos(a) * r, home.y, home.z + Math.sin(a) * r);
+            if (!blocked || !blocked(c.x, c.z)) { s.target = c; break; }
+          }
+          s.wait = 1.5 + Math.random() * 3;
+        }
+      } else {
+        const d = new THREE.Vector3(s.target.x - p.x, 0, s.target.z - p.z); const len = d.length();
+        if (len < 0.05) s.target = null;
+        else {
+          const step = Math.min(len, speed * dt);
+          const nx = p.x + (d.x / len) * step, nz = p.z + (d.z / len) * step;
+          if (blocked && blocked(nx, nz)) s.target = null;
+          else { p.x = nx; p.z = nz; moving = true; wantRot = Math.atan2(d.x, d.z); }
+        }
+      }
+    }
+    if (moving) s.walkT += dt;
+    g.position.x = p.x; g.position.z = p.z;
+    g.position.y = grounds ? groundY(grounds.current, p.x, p.z, position[1]) : position[1];
+    poseArms(arms, moving ? 'walk' : speaking ? (gs.lineIdx === 0 ? 'wave' : 'talk') : near ? 'wave' : 'idle', moving ? s.walkT * 0.75 : t, 0.15, phase);
+    const body = g.children[0];
+    if (asleep) { // lying down, fast asleep (poisoned apple)
+      body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, Math.PI / 2, 0.08);
+      body.position.y = THREE.MathUtils.lerp(body.position.y, 0.42 * scale, 0.08);
+      poseArms(arms, 'idle', 0, 0.2);
+      return;
+    }
+    body.position.y = moving ? Math.abs(Math.sin(s.walkT * 9)) * 0.06 * scale : Math.abs(Math.sin(t * 1.6)) * 0.03 * scale;
+    body.rotation.z = THREE.MathUtils.lerp(body.rotation.z, moving ? Math.sin(s.walkT * 9) * 0.07 : 0, 0.3);
+    const other = gs.lines.length && gs.talker && gs.talker !== name ? npcPos[gs.talker] : null;
+    if (!moving && other && other.distanceTo(p) < 3.5) wantRot = Math.atan2(other.x - p.x, other.z - p.z); // listen to whoever is talking
+    else if (!moving && face && (speaking || dPlayer < 4.5)) wantRot = Math.atan2(player.pos.x - p.x, player.pos.z - p.z);
+    else if (!moving && wander === 0) wantRot = rotY;
+    if (wantRot !== null) {
+      let diff = wantRot - g.rotation.y;
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-      g.rotation.y += diff * 0.06;
+      g.rotation.y += diff * Math.min(1, dt * (moving ? 8 : 5));
     }
   });
   return (
-    <group ref={ref} position={position} rotation={[0, rotY, 0]} visible={visible}
+    <group ref={ref} position={home.toArray() as [number, number, number]} rotation={[0, rotY, 0]} visible={visible}
       onClick={(e) => { e.stopPropagation(); onClick?.(name); }}
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = '')}>
       <group scale={scale}><primitive object={object} /></group>
+      {asleep && (
+        <Html position={[0, 1.4 * scale, 0]} center style={{ pointerEvents: 'none' }}>
+          <div className="zzz">Zzz… ({taps}/5)</div>
+        </Html>
+      )}
       {label && (
         <Html position={[0, 2.95 * scale, 0]} center distanceFactor={9} style={{ pointerEvents: 'none' }}>
           <div className="nametag">{label}</div>
