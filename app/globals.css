@@ -289,3 +289,6 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
 /* zoom buttons: always on screen in the story scenes (also during dialogue), above everything */
 .hud > .zoombtns { z-index: 20; top: 38%; }
 .zoombtns button { width: 48px; height: 48px; font-size: 28px; border: 3px solid #fff; background: #ff7fb0; color: #fff; box-shadow: 0 3px 0 #d94f86, 0 4px 10px #0003; }
+/* single zoom pair, tucked at the right edge under the goal pill so it doesn't cover the two-shot */
+.zoombtns, .hud > .zoombtns, .touchpad .zoombtns { top: max(150px, calc(env(safe-area-inset-top) + 140px)); right: max(8px, env(safe-area-inset-right)); gap: 6px; z-index: 20; }
+.zoombtns button { width: 42px; height: 42px; font-size: 24px; }

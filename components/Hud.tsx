@@ -2,7 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { escort, useGame, HEROES, STORIES, STICKERS, HIDDEN, SPK, T, Tx, useTx, DWARFS } from './store';
 import { Minigames } from './Minigames';
-import { TouchControls, useTouchDevice, ZoomButtons } from './TouchControls';
+import { TouchControls, useTouchDevice } from './TouchControls';
 import { useState } from 'react';
 import { sfx } from './audio';
 import { speak, stopSpeech } from './speech';
@@ -361,7 +361,6 @@ export function Hud() {
           <button className="ghost" onClick={() => { sfx('click'); s.home(); }}>{tx(UI.home)}</button>
         </div>
         {s.running && !line && !s.mini ? <RunHud /> : <StoryGoal />}
-        {!s.mini && !s.sleeping && <ZoomButtons />}
         {s.hint && !line && !s.mini && !s.running && <div className="hint" key={s.hint.ko}>{tx(s.hint)}</div>}
         {s.toast && <div className="toast">{tx(s.toast)}</div>}
         {s.scene === 'forest' && !s.running && ((s.swFollow && !!s.talked['qGone']) || s.seek !== 'off') && !line && ( /* never skips the Queen's poison-apple scene */
