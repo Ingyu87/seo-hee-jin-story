@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useGame, T, Tx, useTx, jump } from './store';
 import { stick, currentAction } from './touch';
 import { sfx } from './audio';
-import { zoomBy } from './common';
+import { zoomBy, resetCam } from './common';
 
 /** true on phones / tablets (coarse pointer or any touch input seen). */
 export function useTouchDevice() {
@@ -101,6 +101,8 @@ export function ZoomButtons() {
     <div className="zoombtns">
       <button aria-label={tx(T('확대', 'Zoom in'))} onPointerDown={start(0.9)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}>＋</button>
       <button aria-label={tx(T('축소', 'Zoom out'))} onPointerDown={start(1 / 0.9)} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}>－</button>
+      <button className="camreset" aria-label={tx(T('화면 원래대로', 'Reset view'))} title={tx(T('화면 원래대로', 'Reset view'))}
+        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); sfx('click'); resetCam(); }}>↺</button>
     </div>
   );
 }
@@ -189,6 +191,7 @@ export function TouchControls() {
   if (!show) return inWorld && !overlay ? <div className="touchpad"><ZoomButtons /></div> : null;
   return (
     <div className="touchpad">
+      <ZoomButtons />
       <Joystick />
       <ActionButtons />
     </div>

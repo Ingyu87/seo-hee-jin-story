@@ -33,18 +33,30 @@ export function Lights({ sun = [8, 14, 6] as [number, number, number], range = 1
   );
 }
 
-/** Player-controlled zoom (mouse wheel on PC / two-finger pinch on phones): 0.55 = close-up, 1.7 = wide.
- *  No free rotation — the camera direction stays automatic. Conversation shots ignore it (auto framing). */
+/** Player-controlled camera.
+ *  - zoom: mouse wheel / two-finger pinch (spread = closer, pinch = wider) / ＋－ buttons. 0.6 = close-up, 1.8 = wide.
+ *  - orbit: one-finger (or mouse) drag on the 3D view turns the camera around the character (yaw) and tilts it (pitch).
+ *  Both also apply to conversation shots, so the player can fix an angle they don't like. */
 export const camZoom = { v: 1 };
-const clampZ = (v: number) => Math.min(1.8, Math.max(0.5, v));
+export const camOrbit = { yaw: 0, pitch: 0, room: false };
+const clampZ = (v: number) => Math.min(1.8, Math.max(0.6, v));
 /** zoom buttons (＋ / －) and keyboard (+ / -) step */
 export function zoomBy(f: number) { camZoom.v = clampZ(camZoom.v * f); }
+/** ↺ button: back to the automatic angle */
+export function resetCam() { camOrbit.yaw = 0; camOrbit.pitch = 0; camZoom.v = 1; }
+function clampOrbit() {
+  if (camOrbit.room) camOrbit.yaw = Math.max(-0.3, Math.min(0.3, camOrbit.yaw));
+  else camOrbit.yaw = Math.atan2(Math.sin(camOrbit.yaw), Math.cos(camOrbit.yaw));
+  camOrbit.pitch = Math.max(camOrbit.room ? -0.25 : -0.3, Math.min(camOrbit.room ? 0.12 : 0.6, camOrbit.pitch));
+}
+/** true right after a drag / pinch, so the finger lifting doesn't count as a tap (walk here / next line) */
+let gestureUntil = 0;
 if (typeof window !== 'undefined') {
   // anything over the 3D view counts (the canvas itself or R3F's wrapper divs), but not buttons / dialogue / joystick
   const onView = (t: EventTarget | null) => {
     const el = t as HTMLElement | null;
     if (!el?.closest) return false;
-    if (el.closest('button, .dialog, .joy, .guide, .toolbar, .topbar')) return false;
+    if (el.closest('button, .dialog, .joy, .guide, .toolbar, .topbar, .zoombtns, .actbtn, .jumpbtn, .act-tip')) return false;
     return !!el.closest('.game');
   };
   window.addEventListener('wheel', (e) => {
@@ -58,20 +70,64 @@ if (typeof window !== 'undefined') {
     if (e.key === '+' || e.key === '=') zoomBy(0.88);
     if (e.key === '-' || e.key === '_') zoomBy(1 / 0.88);
   });
-  // two-finger pinch: Touch events (most reliable on iOS Safari + Android Chrome)
-  let d0 = 0, z0 = 1;
-  const spread = (tl: TouchList) => Math.hypot(tl[0].clientX - tl[1].clientX, tl[0].clientY - tl[1].clientY);
-  window.addEventListener('touchstart', (e) => {
-    if (e.touches.length === 2 && onView(e.touches[0].target) && onView(e.touches[1].target)) { d0 = spread(e.touches); z0 = camZoom.v; }
-  }, { passive: true });
-  window.addEventListener('touchmove', (e) => {
-    if (e.touches.length === 2 && d0 > 20) { e.preventDefault(); camZoom.v = clampZ(z0 * d0 / Math.max(20, spread(e.touches))); }
-  }, { passive: false });
-  window.addEventListener('touchend', (e) => { if (e.touches.length < 2) d0 = 0; });
-  window.addEventListener('touchcancel', () => { d0 = 0; });
-  // iOS Safari: stop the page itself from pinch-zooming over the game
+
+  // Pointer events (mouse + touch, multi-finger on iOS 13+ / Android): 1 finger = orbit, 2 fingers = pinch zoom
+  const pts = new Map<number, { x: number; y: number; sx: number; sy: number }>();
+  let dragging = false, pinchD0 = 0, pinchZ0 = 1;
+  const spread = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  const runOn = () => !!(useGame.getState() as { running?: boolean }).running;
+  window.addEventListener('pointerdown', (e) => {
+    if (!onView(e.target)) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY });
+    if (pts.size === 2) { pinchD0 = Math.max(20, spread()); pinchZ0 = camZoom.v; dragging = false; gestureUntil = Date.now() + 400; }
+  }, true);
+  window.addEventListener('pointermove', (e) => {
+    const p = pts.get(e.pointerId); if (!p) return;
+    const dx = e.clientX - p.x, dy = e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    if (pts.size >= 2) { // pinch: fingers apart = zoom in (closer), together = zoom out
+      camZoom.v = clampZ(pinchZ0 * pinchD0 / Math.max(20, spread()));
+      gestureUntil = Date.now() + 400;
+      return;
+    }
+    if (runOn()) return; // the run game uses left/right swipes to steer
+    if (!dragging && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) > 10) dragging = true;
+    if (dragging) {
+      camOrbit.yaw -= dx * 0.007;
+      camOrbit.pitch += dy * 0.005;
+      clampOrbit();
+      gestureUntil = Date.now() + 350;
+    }
+  }, true);
+  const up = (e: PointerEvent) => {
+    if (!pts.delete(e.pointerId)) return;
+    if (dragging || pinchD0) gestureUntil = Date.now() + 350;
+    if (pts.size < 2) pinchD0 = 0;
+    if (!pts.size) dragging = false;
+    else for (const q of pts.values()) { q.sx = q.x; q.sy = q.y; } // finger left after a pinch: no sudden orbit jump
+  };
+  window.addEventListener('pointerup', up, true); window.addEventListener('pointercancel', up, true);
+  // a drag / pinch is not a tap: swallow the click so the character doesn't walk / the line doesn't skip
+  window.addEventListener('click', (e) => { if (Date.now() < gestureUntil && onView(e.target)) { e.stopPropagation(); e.preventDefault(); } }, true);
+  // never let the page itself scroll / pinch-zoom over the game
+  window.addEventListener('touchmove', (e) => { if (e.touches.length >= 2 && onView(e.target)) e.preventDefault(); }, { passive: false });
   document.addEventListener('gesturestart', (e) => e.preventDefault());
-  (window as unknown as { __snow?: Record<string, unknown> }).__snow = Object.assign((window as unknown as { __snow?: Record<string, unknown> }).__snow || {}, { camZoom });
+  (window as unknown as { __snow?: Record<string, unknown> }).__snow = Object.assign((window as unknown as { __snow?: Record<string, unknown> }).__snow || {}, { camZoom, camOrbit });
+}
+
+/** rotate a camera position around the look point by the player's orbit (yaw around Y, pitch = extra tilt) */
+const _off = new THREE.Vector3(), _sph = new THREE.Spherical(), _Y = new THREE.Vector3(0, 1, 0);
+function applyOrbit(pos: THREE.Vector3, lk: THREE.Vector3, pivot: THREE.Vector3) {
+  if (!camOrbit.yaw && !camOrbit.pitch) return { pos, lk };
+  // turn around the character (not a point ahead of them), so they stay in the middle of the picture
+  _off.copy(pos).sub(pivot);
+  _sph.setFromVector3(_off);
+  _sph.theta += camOrbit.yaw;
+  _sph.phi = THREE.MathUtils.clamp(_sph.phi - camOrbit.pitch, 0.25, 1.5); // never under the ground / straight down
+  const p2 = pivot.clone().add(_off.setFromSpherical(_sph));
+  const l2 = lk.clone().sub(pivot).applyAxisAngle(_Y, camOrbit.yaw).add(pivot);
+  return { pos: p2, lk: l2 };
 }
 
 const _mid = new THREE.Vector3(), _dir = new THREE.Vector3(), _up = new THREE.Vector3();
@@ -121,6 +177,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
   const lookAt = useRef(new THREE.Vector3());
   const first = useRef(true);
   const fade = useOccluderFade(occluders);
+  useEffect(() => { camOrbit.yaw = 0; camOrbit.pitch = 0; camOrbit.room = !!(fixed || room); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const convo = useRef<{ zoom?: number; lines: unknown; talker: string | null; sign: number; pPos: THREE.Vector3 | null; nPos: THREE.Vector3 | null; pos: THREE.Vector3; look: THREE.Vector3 }>(
     { lines: null, talker: null, sign: 1, pPos: null, nPos: null, pos: new THREE.Vector3(), look: new THREE.Vector3() });
   useFrame(() => {
@@ -202,7 +259,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
         const fitW = (screenSep / 2 + margin) / Math.tan(hHalf);  // both bodies + a small margin across the screen
         // FULL BODY two-shot: head-to-toe above the dialogue box (~bottom 32% on phones)
         const fitH = (charH * 1.2) / ((portrait ? 0.95 : 1.15) * Math.tan(vHalf));
-        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH) * camZoom.v, charH * 3.4, 18);
+        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH) * camZoom.v, charH * 3.4 * Math.min(1, camZoom.v), 18);
         const el = THREE.MathUtils.degToRad(portrait ? 18 : 14);
         // aim BELOW the pair so both full bodies sit in the upper part of the screen, clear of the dialogue box
         c.look.copy(mid); c.look.y += charH * 0.5 - (portrait ? 0.16 : 0.12) * dist * Math.tan(vHalf);
@@ -231,6 +288,8 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
       }
     } else { convo.current.lines = null; convoHidden.clear(); }
     if (!(g.lines.length && npc && npc.distanceTo(player.pos) < 7)) pos = lk.clone().add(pos.clone().sub(lk).multiplyScalar(camZoom.v));
+    const inConvo = !!(g.lines.length && npc && npc.distanceTo(player.pos) < 7);
+    ({ pos, lk } = applyOrbit(pos, lk, inConvo || fixed ? lk : player.pos.clone().setY(player.pos.y + charH * 0.5)));
     first.current = false;
     camera.position.lerp(pos, a);
     lookAt.current.lerp(lk, a);

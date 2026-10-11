@@ -8,7 +8,7 @@ import { rigArms, poseArms, Pose } from './rig';
 import { useModel } from './models';
 import { sfx } from './audio';
 import { stick } from './touch';
-import { convoHidden } from './common';
+import { convoHidden, camOrbit } from './common';
 
 export type World = {
   scale: number;
@@ -139,7 +139,9 @@ export function Player({ world }: { world: World }) {
     else if (!locked && (kx || kz)) {
       if (g.sitting) g.standUp();
       if (g.target) useGame.setState({ target: null, pending: null });
-      dx = kx; dz = kz;
+      // camera-relative: "up" always means "away from the camera", even after the player turned the view
+      const cy = Math.cos(camOrbit.yaw), sy = Math.sin(camOrbit.yaw);
+      dx = kx * cy + kz * sy; dz = -kx * sy + kz * cy;
     } else if (!locked && g.target && !g.sitting) {
       analog = 1;
       dx = g.target[0] - p.x; dz = g.target[1] - p.z;

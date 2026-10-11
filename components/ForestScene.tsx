@@ -27,8 +27,8 @@ function afterQueen() {
   const h = HEROES[g.hero]; const n = h.name;
   useGame.setState({ talker: 'SnowWhite' });
   g.say([
-    { speaker: n, text: T('큰일이다… 독 사과라니! 백설공주야, 내가 꼭 지켜 줄게.', 'Oh no… a poison apple! Snow White, I will protect you.') },
-    { speaker: SPK.snow, text: T('너무 무서워… 왕비가 다시 오기 전에 얼른 오두막까지 달려가자!', "I'm so scared… let's run to the cottage before the Queen comes back!"),
+    { speaker: n, text: T("큰일 났다… 독 사과라니! 백설공주야, 걱정 마. 내가 지켜 줄게!", "Uh-oh… a poison apple?! Don't worry, Snow White. I'll protect you!") },
+    { speaker: SPK.snow, text: T("무서워… 왕비가 돌아오기 전에 얼른 오두막까지 뛰어가자!", "I'm scared… let's run to the cottage before the Queen comes back!"),
       choices: [{ id: 'sw-go', label: T('같이 달리자! 🏃', "Let's run! 🏃") }] },
   ]);
 }

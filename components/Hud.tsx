@@ -25,10 +25,8 @@ const UI = {
   more: T('눌러서 계속 ▼', 'Tap to continue ▼'),
   sleeping: (_n: Tx): Tx => T('💤 백설공주가 잠들었어! 화면을 톡톡 눌러서 깨워 줘!', '💤 Snow White fell asleep! Tap the screen to wake her up!'),
   endTitle: T('🎉 해피엔딩!', '🎉 Happy ending!'),
-  endSafe: (n: Tx): Tx => T(`${n.ko === '서희' ? '서희가' : '서진이가'} 백설공주에게 독 사과를 먹지 말라고 알려 줘서 모두가 안전했어요. 일곱 난쟁이와 백설공주는 신나는 파티를 열었답니다.`,
-    `${n.en} warned Snow White not to eat the poison apple, so everyone stayed safe. The seven dwarfs and Snow White threw a wonderful party.`),
-  endWoke: (n: Tx): Tx => T(`${n.ko === '서희' ? '서희와' : '서진이와'} 난쟁이들이 힘을 합쳐 잠든 백설공주를 깨웠어요. 모두 오래오래 행복하게 살았답니다.`,
-    `${n.en} and the dwarfs worked together to wake Snow White. They all lived happily ever after.`),
+  endSafe: (n: Tx): Tx => T(`${n.ko === '서희' ? '서희가' : '서진이가'} 독 사과를 먹지 말라고 알려 준 덕분에 모두 무사했어요. 일곱 난쟁이와 백설공주는 신나는 파티를 열었답니다.`, `Because ${n.en} warned Snow White about the poison apple, everyone stayed safe. Then the seven dwarfs and Snow White threw a big, happy party.`),
+  endWoke: (n: Tx): Tx => T(`${n.ko === '서희' ? '서희와' : '서진이와'} 난쟁이들이 힘을 모아 잠든 백설공주를 깨웠어요. 그리고 모두 오래오래 행복하게 살았답니다.`, `${n.en} and the dwarfs worked together and woke Snow White up. And they all lived happily ever after.`),
   again: T('다시 하기', 'Play again'),
   change: T('캐릭터 바꾸기', 'Change character'),
   close: T('알겠어! 👍', 'Got it! 👍'),
@@ -122,6 +120,7 @@ const HELP_PHONE: { img: string; w: number; title: Tx; body: Tx }[] = [
   { img: '/help/jump.webp', w: 60, title: T('파란 버튼 = 점프', 'Blue button = jump'), body: T('누르면 깡충! 걸으면서 같이 눌러도 돼요.', 'Press it to hop! You can press it while walking, too.') },
   { img: '/help/talk.webp', w: 64, title: T('노란 버튼 = 말하기 / 하기', 'Yellow button = talk / do'), body: T('친구나 물건 가까이 가면 버튼이 노랗게 반짝이고 위에 할 일이 나와요. 누르면 말 걸기, 문 열기, 의자 앉기, 사과 치우기, 숨은 난쟁이 찾기!', 'Walk close to a friend or a thing: the button glows yellow and shows what you can do. Press it to talk, open the door, sit, take the apple or find a hidden dwarf!') },
   { img: '/help/dialog.webp', w: 220, title: T('이야기 상자', 'Story box'), body: T('이야기 상자를 톡 누르면 다음 이야기가 나와요. 노란 대답 버튼이 나오면 하나를 골라요. 이야기는 소리 내어 읽어 줘요!', 'Tap the story box for the next line. When yellow answer buttons appear, pick one. The story is read aloud to you!') },
+  { img: '/help/zoom.webp', w: 48, title: T('화면 돌리기 · 확대', 'Turn & zoom the view'), body: T('빈 화면을 한 손가락으로 쓱 밀면 카메라가 빙 돌아가요. 두 손가락을 벌리면 크게, 모으면 작게! ＋－ 버튼도 돼요. ↺ 누르면 원래대로.', 'Slide one finger on the picture to turn the camera. Spread two fingers to zoom in, pinch to zoom out — or use ＋/－. Press ↺ to go back.') },
   { img: '/help/toolbar.webp', w: 220, title: T('위쪽 버튼들', 'Top buttons'), body: T('한/EN: 한국어·영어 바꾸기 · 🔊 음악과 소리 · 🗣️ 이야기 읽어 주기 켜기/끄기 · ❓ 이 도움말', 'KO/EN: switch language · 🔊 music & sound · 🗣️ read-aloud on/off · ❓ this help') },
 ];
 const HELP_PC: { keys: string[]; title: Tx; body: Tx; img?: string }[] = [
@@ -129,6 +128,7 @@ const HELP_PC: { keys: string[]; title: Tx; body: Tx; img?: string }[] = [
   { keys: ['Space'], title: T('점프', 'Jump'), body: T('스페이스 바를 누르면 깡충!', 'Press the space bar to hop!') },
   { keys: ['E'], title: T('말하기 / 하기', 'Talk / do'), body: T('가까이 가면 화면 아래에 “E …”가 나와요. E 를 누르면 말 걸기, 문 열기, 의자 앉기!', 'Get close and an "E …" hint appears at the bottom. Press E to talk, open the door or sit!'), img: '/help/desk-prompt.webp' },
   { keys: ['Enter'], title: T('다음 이야기', 'Next line'), body: T('엔터를 누르면 다음 대사로 넘어가요. (가까이 있으면 E 처럼 행동도 해요)', 'Press Enter for the next line. (Near something, it works like E too.)') },
+  { keys: ['🖱️'], title: T('화면 돌리기 · 확대', 'Turn & zoom the view'), body: T('마우스로 화면을 끌면 카메라가 돌아가요. 휠이나 + − 키로 확대·축소. ↺ 버튼은 원래대로.', 'Drag with the mouse to turn the camera. Wheel or + / − to zoom. ↺ resets the view.') },
   { keys: ['1', '2', '3'], title: T('대답 고르기', 'Pick an answer'), body: T('노란 대답 버튼이 나오면 숫자로 골라요. 마우스로 눌러도 돼요.', 'When answer buttons appear, press a number — or just click.') },
 ];
 

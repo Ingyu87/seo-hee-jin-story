@@ -261,3 +261,4 @@ body.touch .runtip { bottom: max(124px, calc(env(safe-area-inset-bottom) + 116px
 /* ending */
 .ending .end-kind { display: inline-block; background: #fff3c4; color: #6d4c41; border-radius: 999px; padding: 3px 12px; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
 .ending .fin { font-family: 'Jua', ui-rounded, system-ui, sans-serif; font-size: 22px; color: #e24a84; margin: 6px 0 10px; }
+.zoombtns button.camreset { font-size: 20px; background: #8ecae6; box-shadow: 0 3px 0 #4a9cc0, 0 4px 10px #0003; }
