@@ -40,10 +40,35 @@ function prep(root: THREE.Object3D, shadows = true) {
   return root;
 }
 
+/**
+ * Seohee's ponytail (K1Ponytail) was modelled hugging the back of the head, so the round hair cap hides it
+ * from almost every angle. Hang it from a pivot at the hair tie, make it a bit bigger and swing it out
+ * behind the head so it reads as a cute 꽁지머리 (Player sways it while walking / jumping).
+ */
+function fixPonytail(root: THREE.Object3D) {
+  const tail = root.getObjectByName('K1Ponytail');
+  if (!tail || !tail.parent || root.userData.ponytail) return;
+  const tie = root.getObjectByName('K1Tie');
+  const parent = tail.parent;
+  const pivot = new THREE.Group();
+  pivot.name = 'PonytailPivot';
+  pivot.position.set(0, tie ? tie.position.y : 2.07, (tie ? tie.position.z : -0.6) - 0.02);
+  parent.add(pivot);
+  parent.updateMatrixWorld(true);
+  pivot.attach(tail);
+  pivot.scale.setScalar(1.3);
+  pivot.rotation.x = 0.55; // swing the tail out behind the head
+  pivot.rotation.z = 0.32; // and a little to one side so it peeks out even from the front
+  pivot.userData.baseX = 0.55;
+  pivot.userData.baseZ = 0.32;
+  if (tie) tie.scale.multiplyScalar(1.35); // chunkier scrunchie
+  root.userData.ponytail = pivot;
+}
+
 /** Clone of a whole GLB scene (materials shared, nodes unique per instance). */
 export function useModel(url: string, shadows = true) {
   const { scene } = useGLTF(url);
-  return useMemo(() => prep(scene.clone(true), shadows), [scene, shadows]);
+  return useMemo(() => { const r = prep(scene.clone(true), shadows); fixPonytail(r); return r; }, [scene, shadows]);
 }
 
 /** Clone of a single named root node of a GLB (e.g. one dwarf out of seven), re-centred at the origin. */

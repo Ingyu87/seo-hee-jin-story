@@ -1,6 +1,6 @@
 'use client';
-import { useEffect } from 'react';
-import { useGame, HEROES, STORIES, STICKERS, HIDDEN, SPK, T, Tx, useTx } from './store';
+import { useEffect, useRef } from 'react';
+import { useGame, HEROES, STORIES, STICKERS, HIDDEN, SPK, T, Tx, useTx, DWARFS } from './store';
 import { Minigames } from './Minigames';
 import { TouchControls, useTouchDevice } from './TouchControls';
 import { useState } from 'react';
@@ -37,16 +37,54 @@ const UI = {
   unmute: T('소리 켜기', 'Unmute'),
 };
 
+/** Dialogue box: tap = next line, press & hold = fast-forward, ⏩ button / Shift = skip to the next question. */
+function Dialog() {
+  const s = useGame(); const tx = useTx(); const touch = useTouchDevice();
+  const line = s.lines[s.lineIdx];
+  const hold = useRef<{ t?: ReturnType<typeof setTimeout>; iv?: ReturnType<typeof setInterval>; fast: boolean }>({ fast: false });
+  const stop = () => { clearTimeout(hold.current.t); clearInterval(hold.current.iv); };
+  useEffect(() => stop, []);
+  if (!line) return null;
+  return (
+    <div className="dialog"
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        hold.current.fast = false; stop();
+        hold.current.t = setTimeout(() => {
+          hold.current.fast = true;
+          hold.current.iv = setInterval(() => { const g = useGame.getState(); if (!g.lines.length || g.lines[g.lineIdx]?.choices) stop(); else g.next(); }, 220);
+        }, 380);
+      }}
+      onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}
+      onClick={() => { if (hold.current.fast) { hold.current.fast = false; return; } if (!line.choices) s.next(); }}>
+      <div className="speaker">{tx(line.speaker)}</div>
+      {!line.choices && (
+        <button className="skipbtn" aria-label={tx(T('건너뛰기', 'Skip'))}
+          onClick={(e) => { e.stopPropagation(); sfx('click'); s.skip(); }}>⏩ {tx(T('건너뛰기', 'Skip'))}</button>
+      )}
+      <div className="text">{tx(line.text)}</div>
+      {line.choices ? (
+        <div className="choices">
+          {line.choices.map((c) => (
+            <button key={c.id} onClick={(e) => { e.stopPropagation(); s.choose(c.id); }}>{tx(c.label)}</button>
+          ))}
+        </div>
+      ) : <div className="more">{touch ? tx(T('눌러서 계속 ▼ · 꾹 누르면 빨리 ⏩', 'Tap to continue ▼ · hold to fast-forward ⏩'))
+        : tx(T('Enter 다음 ▼ · Enter 꾹 = 빨리 · Shift = 건너뛰기', 'Enter: next ▼ · hold Enter: fast · Shift: skip'))}</div>}
+    </div>
+  );
+}
+
 const GUIDE: { icon: string; title: Tx; body: Tx }[] = [
   { icon: '🧒', title: T('너는 백설공주의 친구!', "You are Snow White's friend!"), body: T('서희·서진이는 동화 속에 들어가 백설공주를 도와주는 친구예요. 백설공주를 만나고, 오두막까지 데려다주고, 나쁜 왕비의 독 사과로부터 지켜 줘요.', "Seohee and Seojin jump into the fairy tale as Snow White's helpers: meet her, walk her to the cottage and protect her from the wicked Queen's poison apple.") },
-  { icon: '💬', title: T('대화하기', 'Talk'), body: T('백설공주, 난쟁이, 할머니를 누르면 다가가서 말을 걸어요. 말풍선을 누르면 다음 대사, 노란 버튼으로 대답을 골라요.', 'Tap Snow White, a dwarf or the old woman to walk over and talk. Tap the speech box for the next line and pick answers with the yellow buttons.') },
+  { icon: '💬', title: T('대화하기', 'Talk'), body: T('백설공주, 난쟁이, 할머니를 누르면 다가가서 말을 걸어요. 말풍선을 누르면 다음 대사, 꾹 누르면 빨리 넘어가고 ⏩ 건너뛰기로 바로 질문까지 가요. 노란 버튼으로 대답을 골라요. (PC: Enter 다음 · Shift 건너뛰기)', 'Tap Snow White, a dwarf or the old woman to walk over and talk. Tap the speech box for the next line, hold it to fast-forward, or press ⏩ Skip to jump to the next question. Pick answers with the yellow buttons. (PC: Enter next · Shift skip)') },
   { icon: '🚪', title: T('문 열기', 'Open the door'), body: T('오두막 문을 누르면 끼이익~ 열려요. 한 번 더 누르면 닫혀요.', 'Tap the cottage door and it creaks open. Tap again to close it.') },
   { icon: '🪑', title: T('의자에 앉기', 'Sit on a chair'), body: T('의자를 누르면 걸어가서 앉아요. 땅을 누르거나 “일어나기”를 누르면 일어나요.', 'Tap a chair to walk over and sit. Tap the floor or "Stand up" to get up.') },
   { icon: '🍎', title: T('백설공주 지키기', 'Protect Snow White'), body: T('너는 백설공주를 돕는 친구예요! 난쟁이들이 일하러 가면 수상한 할머니가 찾아와 사과를 줘요. “먹지 마!”라고 알려 주거나 식탁 위 사과를 치우면 파티 엔딩, 지켜보기만 하면 백설공주가 잠들어서 화면을 5번 톡톡 눌러 깨워야 해요.', "You are Snow White's helper! When the dwarfs leave for work, a strange old woman brings an apple. Warn Snow White or take the apple away for the party ending; if you just watch, she falls asleep and you tap 5 times to wake her.") },
 ];
 GUIDE.push(
   { icon: '🎮', title: T('미니게임', 'Mini-games'), body: T('백설공주에게 꽃 따 주기(15초), 투덜이와 가위바위보, 박사와 사과 피하기! 성공하면 별 ⭐을 받아요.', 'Pick flowers for Snow White (15 s), rock-paper-scissors with Grumpy, and apple dodge with Doc! Win to earn a star ⭐.') },
-  { icon: '🔍', title: T('숨바꼭질', 'Hide-and-seek'), body: T('숲속 나무 사이에 난쟁이 3명이 숨어 있어요. 찾아서 눌러 봐요!', 'Three dwarfs are hiding among the forest trees. Find them and tap them!') },
+  { icon: '🔍', title: T('숨바꼭질', 'Hide-and-seek'), body: T('오두막에서 박사가 “숲에서 숨바꼭질하던 친구 3명이 안 돌아왔어!” 하고 도움을 청하면 “도와줄게!”를 골라요. 숲 나무 옆에 숨은 난쟁이에게 가까이 가서 🔍 버튼을 눌러요!', 'In the cottage Doc asks for help: three friends playing hide-and-seek in the forest haven\'t come back. Choose "I\'ll help!", then get close to the dwarfs hiding by the trees and press 🔍!') },
   { icon: '📖', title: T('별과 스티커 북', 'Stars & sticker book'), body: T('엔딩에서 모은 별을 확인하고, 📖 버튼에서 모은 스티커를 볼 수 있어요.', 'See your stars at the ending, and open 📖 to view the stickers you unlocked.') },
 );
 const CONTENTS: Tx[] = [
@@ -181,11 +219,12 @@ export function Hud() {
     if (!line) { stopSpeech(); return; }
     if (!s.voice || s.muted) return;
     const sp = line.speaker.ko;
-    const kind = sp === SPK.story.ko ? 'narrator' : sp === SPK.snow.ko ? 'princess' : (sp === SPK.queen.ko || sp === SPK.oldWoman.ko) ? 'queen'
-      : (sp === HEROES.seohui.name.ko || sp === HEROES.seojin.name.ko || sp === '나') ? 'child' : sp === '마법 거울' ? 'narrator' : 'dwarf';
+    const dwarf = DWARFS.find((d) => d.name.ko === sp)?.node;
+    const kind = sp === SPK.story.ko ? 'narrator' : sp === SPK.snow.ko ? 'snow' : sp === SPK.queen.ko ? 'queen' : sp === SPK.oldWoman.ko ? 'oldwoman'
+      : sp === '마법 거울' ? 'mirror' : sp === HEROES.seohui.name.ko ? 'seohui' : sp === HEROES.seojin.name.ko ? 'seojin' : sp === '나' ? s.hero : dwarf ?? 'narrator';
     speak(line.text[s.lang], s.lang, kind);
   }, [line, s.lang, s.voice, s.muted]);
-  useEffect(() => { if (s.ending && s.scene === 'ending' && s.voice && !s.muted) speak(tx(s.ending === 'safe' ? UI.endSafe(h.name) : UI.endWoke(h.name)), s.lang); },
+  useEffect(() => { if (s.ending && s.scene === 'ending' && s.voice && !s.muted) speak(tx(s.ending === 'safe' ? UI.endSafe(h.name) : UI.endWoke(h.name)), s.lang, 'narrator'); },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [s.scene, s.ending]);
   useEffect(() => { document.documentElement.lang = s.lang; document.title = BRAND; }, [s.lang]);
@@ -257,13 +296,13 @@ export function Hud() {
         <div className="topbar">
           <span className="who" style={{ background: h.color }}>{tx(h.name)} · {tx(UI.age(h.age))}</span>
           <span className="place">{tx(s.scene === 'forest' ? UI.forest : UI.cottage)}</span>
-          {s.scene === 'forest' && <span className="seek">🔍 {s.found.length}/{HIDDEN.length}</span>}
+          {s.scene === 'forest' && s.seek === 'on' && <span className="seek">🔍 {s.found.length}/{HIDDEN.length}</span>}
           <span className="starcount">⭐ {Object.keys(s.stars).length}</span>
           <button className="ghost" onClick={() => { sfx('click'); s.home(); }}>{tx(UI.home)}</button>
         </div>
         {s.hint && !line && !s.mini && <div className="hint">{tx(s.hint)}</div>}
         {s.toast && <div className="toast">{tx(s.toast)}</div>}
-        {s.scene === 'forest' && s.swFollow && !line && (
+        {s.scene === 'forest' && (s.swFollow || s.seek !== 'off') && !line && (
           <button className="shortcut" onClick={() => { sfx('click'); s.goto('cottage'); }}>{tx(UI.toCottage)}</button>
         )}
         {s.scene === 'cottage' && s.sitting && !line && (
@@ -274,19 +313,7 @@ export function Hud() {
             <div className="tapmsg">{tx(UI.sleeping(h.name))} <b>{s.taps}/5</b></div>
           </div>
         )}
-        {line && (
-          <div className="dialog" onClick={() => { if (!line.choices) s.next(); }}>
-            <div className="speaker">{tx(line.speaker)}</div>
-            <div className="text">{tx(line.text)}</div>
-            {line.choices ? (
-              <div className="choices">
-                {line.choices.map((c) => (
-                  <button key={c.id} onClick={(e) => { e.stopPropagation(); s.choose(c.id); }}>{tx(c.label)}</button>
-                ))}
-              </div>
-            ) : <div className="more">{tx(UI.more)}</div>}
-          </div>
-        )}
+        {line && <Dialog key={s.lines.length ? 'd' : ''} />}
       </>
     );
   }

@@ -146,6 +146,13 @@ export function Player({ world }: { world: World }) {
     const pose: Pose = g.sitting ? 'sit' : g.sleeping ? 'idle' : air ? 'jump' : player.moving ? 'walk'
       : g.apple === 'held' ? 'hold' : heroTalking ? 'wave' : line ? 'talk' : 'idle';
     poseArms(arms, pose, t0.current, 0.25);
+    const tail = model.userData.ponytail as THREE.Object3D | undefined;
+    if (tail) { // bouncy ponytail: swings while walking, flips up on a jump
+      const base = tail.userData.baseX as number;
+      const want = air ? base + 0.45 : player.moving ? base + 0.12 + Math.sin(t0.current * 12) * 0.12 : base + Math.sin(t0.current * 2) * 0.03;
+      tail.rotation.x = THREE.MathUtils.lerp(tail.rotation.x, want, 0.25);
+      tail.rotation.z = THREE.MathUtils.lerp(tail.rotation.z, (tail.userData.baseZ as number) + (player.moving ? Math.sin(t0.current * 6) * 0.15 : 0), 0.2);
+    }
 
     const o = outer.current, i = inner.current;
     t0.current += dt;

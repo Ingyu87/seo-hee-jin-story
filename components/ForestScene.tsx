@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
-import { useGame, player, HIDDEN, DWARFS, useTx, npcPos, walkNpc, npcGoal } from './store';
+import { useGame, player, HIDDEN, DWARFS, HEROES, SPK, useTx, npcPos, walkNpc, npcGoal } from './store';
 import { sfx } from './audio';
 import { Html } from '@react-three/drei';
 import { useModel, useModelPart, MODELS } from './models';
@@ -11,6 +11,13 @@ import { Lights, FollowCam } from './common';
 import { useAct } from './touch';
 import { rigArms, poseArms } from './rig';
 import { T } from './store';
+
+/** Queen's story beat starts when she arrives — waits politely if another line is still on screen. */
+function queenTalks() {
+  const g = useGame.getState();
+  if (g.lines.length || g.mini) { setTimeout(queenTalks, 300); return; }
+  g.interact('Queen');
+}
 
 const S = 0.9; // character scale used in the Blender forest render
 /** Blender path centre: x = 0.9 sin(0.11 y); glTF z = -y. */
@@ -60,11 +67,15 @@ function SnowWhite({ grounds }: { grounds: React.MutableRefObject<THREE.Object3D
     t.current += dt;
     const p = pos.current;
     let moving = false;
-    if (follow) {
+    if (follow && useGame.getState().lines.length) {
+      // stand still while talking (otherwise she circles the player as the player turns to face her)
+      const w = Math.atan2(player.pos.x - p.x, player.pos.z - p.z);
+      g.rotation.y += Math.atan2(Math.sin(w - g.rotation.y), Math.cos(w - g.rotation.y)) * 0.1;
+    } else if (follow) {
       // walk beside the player (to her right, half a step behind)
       const fwd = new THREE.Vector3(Math.sin(player.rotY), 0, Math.cos(player.rotY));
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x).multiplyScalar(-1);
-      const want = player.pos.clone().addScaledVector(fwd, -0.5).addScaledVector(right, 1.15);
+      const want = player.pos.clone().addScaledVector(fwd, -0.4).addScaledVector(right, 1.5);
       const d = want.clone().sub(p).setY(0);
       if (d.length() > 0.3) {
         moving = true;
@@ -163,23 +174,28 @@ export function ForestScene() {
     scale: S,
     speed: 3.6,
     spawn: [pathX(3), 0, 3],
-    spawnRot: 0,
+    spawnRot: Math.PI, // face up the path (back to the camera, like a 3rd-person game: hair / ponytail visible)
     grounds,
     blocked: (x, z) => z > 11 || z < -37 || Math.abs(x - pathX(z)) > 3.4,
     onStep: (p) => {
       const g = useGame.getState();
       // Story beat: the jealous Queen steps out onto the path with her magic mirror…
+      if (g.seek !== 'off') { if (g.seek === 'done' && !fired.current.gate && p.z < -31 && !g.lines.length) { fired.current.gate = true; g.interact('CottageGate'); } return; }
       if (!g.talked['q1'] && g.metSnowWhite && p.z < -13 && !g.lines.length && !g.mini) {
         useGame.setState({ talked: { ...g.talked, q1: true }, target: null, pending: null });
-        walkNpc('Queen', ['player'], () => useGame.getState().interact('Queen'), 2.2);
+        // she stops a few steps up the path talking to her mirror — the player overhears her (doesn't walk into you)
+        const z1 = p.z - 4.2; walkNpc('Queen', [[pathX(z1) - 1.6, z1]], queenTalks, 2.2);
+        const h = HEROES[g.hero];
+        g.say([{ speaker: h.name, text: T('앗, 저기 무서운 왕비가 온다! 쉿… 나무 뒤에 숨어서 들어 보자!', "Oh! The wicked Queen is coming! Shh… let's hide behind a tree and listen!") }]);
       }
       // …and later appears once more to reveal her poison-apple plan, then vanishes
       if (!g.talked['q2'] && g.talked['q1'] && g.swFollow && p.z < -24 && !g.lines.length && !g.mini) {
         useGame.setState({ talked: { ...g.talked, q2: true }, target: null, pending: null });
         const q = npcPos.Queen; if (q && q.distanceTo(p) > 9) q.set(p.x - 2.6, q.y, p.z - 3);
-        walkNpc('Queen', ['player'], () => useGame.getState().interact('Queen'), 2.4);
+        const z2 = p.z - 4.2; walkNpc('Queen', [[pathX(z2) - 1.6, z2]], queenTalks, 2.4);
       }
-      if (!fired.current.gate && g.swFollow && p.z < -31) {
+      // (wait until the Queen has finished her poison-apple scene so it can't be skipped by walking past)
+      if (!fired.current.gate && g.swFollow && p.z < -31 && !npcGoal.Queen && !g.lines.length && (!g.talked['q2'] || g.talked['qGone'])) {
         fired.current.gate = true; useGame.setState({ target: null, pending: null }); g.interact('CottageGate');
       }
     },
@@ -187,6 +203,7 @@ export function ForestScene() {
   }), [grounds, spawnKey]);
 
   const qGone = useGame((s) => !!s.talked['qGone']);
+  const seek = useGame((s) => s.seek);
   useFrame(() => {
     const g = useGame.getState();
     if (g.talked['q2'] && !g.talked['qGone'] && !g.lines.length && !npcGoal.Queen && (g.beats['Queen'] ?? 0) >= 2) {
@@ -194,8 +211,8 @@ export function ForestScene() {
     }
   });
   useEffect(() => () => { npcGoal.Queen = undefined; }, []);
-  useAct('Queen', { icon: '🪞', label: T('왕비 엿듣기', 'Listen to the Queen'), r: 2.3, pos: () => (useGame.getState().talked['qGone'] ? null : npcPos.Queen ? [npcPos.Queen.x, npcPos.Queen.z] : [pathX(-21) - 2.4, -21]), run: () => useGame.getState().interact('Queen') });
-  useAct('CottageGate', { icon: '🏠', label: T('오두막에 들어가기', 'Enter the cottage'), r: 4, pos: () => (useGame.getState().swFollow ? [pathX(-33), -33] : null), run: () => useGame.getState().interact('CottageGate') });
+  useAct('Queen', { icon: '🪞', label: T('왕비 엿듣기', 'Listen to the Queen'), r: 2.3, pos: () => (useGame.getState().talked['qGone'] || useGame.getState().seek !== 'off' ? null : npcPos.Queen ? [npcPos.Queen.x, npcPos.Queen.z] : [pathX(-21) - 2.4, -21]), run: () => useGame.getState().interact('Queen') });
+  useAct('CottageGate', { icon: '🏠', label: T('오두막에 들어가기', 'Enter the cottage'), r: 4, pos: () => (useGame.getState().swFollow || useGame.getState().seek === 'done' ? [pathX(-33), -33] : null), run: () => useGame.getState().interact('CottageGate') });
 
   const onGround = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -210,9 +227,9 @@ export function ForestScene() {
       <FollowCam offset={[0, 3.1, 6.2]} look={[0, 1.2, -1.5]} />
       <primitive object={forest} onClick={onGround} />
       <Player world={world} />
-      <SnowWhite grounds={grounds} />
-      {HIDDEN.map((n) => <HiddenDwarf key={n} node={n} grounds={grounds} />)}
-      <Npc object={queen} name="Queen" position={[pathX(-21) - 2.4, 0, -21]} rotY={0.6} scale={S} grounds={grounds} wander={1.2} speed={0.5} visible={!qGone}
+      {seek === 'off' && <SnowWhite grounds={grounds} />}
+      {seek === 'on' && HIDDEN.map((n) => <HiddenDwarf key={n} node={n} grounds={grounds} />)}
+      <Npc object={queen} name="Queen" position={[pathX(-21) - 2.4, 0, -21]} rotY={0.6} scale={S} grounds={grounds} wander={1.2} speed={0.5} visible={!qGone && seek === 'off'}
         blocked={(x, z) => Math.abs(x - pathX(z)) > 3.3 || Math.abs(x - pathX(z)) < 1.2}
         onClick={(n) => { const q = npcPos.Queen; if (q) useGame.getState().moveTo(q.x + 1.2, q.z + 0.6, n); }} />
     </>

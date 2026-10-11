@@ -79,12 +79,33 @@ function useCurrentAction() {
   return act;
 }
 
+/** Short, kid-obvious verb for the big action button (what pressing it will do right now). */
+const VERB: Record<string, Tx> = {
+  '💬': T('말 걸기', 'Talk'), '🔍': T('찾았다!', 'Found!'), '🚪': T('문 열기', 'Door'), '🪑': T('앉기', 'Sit'), '🍎': T('사과 집기', 'Take'),
+  '🪞': T('엿듣기', 'Listen'), '🏠': T('들어가기', 'Go in'), '🧍': T('일어나기', 'Stand'), '👆': T('깨우기', 'Wake'), '▶': T('다음', 'Next'),
+};
+
 function ActionButtons() {
   const act = useCurrentAction();
   const tx = useTx();
+  // first-time tip so kids know what the big button is for
+  const [tip, setTip] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem('shj-tip-act')) return;
+    setTip(true);
+    const t = setTimeout(() => setTip(false), 9000);
+    return () => clearTimeout(t);
+  }, []);
+  const doneTip = () => { setTip(false); try { localStorage.setItem('shj-tip-act', '1'); } catch {} };
   return (
     <>
-      {act?.label && <div className="act-prompt">{act.icon} {tx(act.label)}</div>}
+      {act?.label && !tip && <div className="act-prompt">{act.icon} {tx(act.label)}</div>}
+      {tip && (
+        <div className="act-tip" onPointerDown={(e) => { e.stopPropagation(); doneTip(); }}>
+          {tx(T('친구 가까이 가면 이 버튼이 노랗게 반짝여요! ✨ 그때 누르면 말을 걸거나 문을 열 수 있어요 👇',
+            'When you get close to a friend this button glows yellow! ✨ Press it to talk, open doors and more 👇'))}
+        </div>
+      )}
       <button className="jumpbtn" aria-label={tx(T('점프', 'Jump'))}
         onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); jump(); }}
         onContextMenu={(e) => e.preventDefault()}>
@@ -94,11 +115,12 @@ function ActionButtons() {
         onPointerDown={(e) => {
           e.preventDefault(); e.stopPropagation();
           const a = currentAction();
-          if (a) a.run(); else sfx('click');
+          if (a) { a.run(); doneTip(); } else sfx('click');
         }}
         onContextMenu={(e) => e.preventDefault()}>
         <span className="act-ico">{act ? act.icon : '💬'}</span>
-        <small>{tx(T('말하기', 'Talk'))}</small>
+        <small>{act ? tx(VERB[act.icon] ?? T('하기', 'Do it')) : tx(T('말하기', 'Talk'))}</small>
+        {!act && <em>{tx(T('가까이 가면 켜져요', 'Get closer'))}</em>}
       </button>
     </>
   );

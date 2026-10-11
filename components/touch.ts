@@ -57,6 +57,19 @@ export function doAction() {
 
 // keyboard equivalent of the action button (desktop)
 if (typeof window !== 'undefined') {
+  // dialogue fast-forward on desktop: Shift / Esc = skip to the next question, hold Enter = fast lines
+  let lastRepeat = 0;
+  window.addEventListener('keydown', (e) => {
+    const g = useGame.getState();
+    if (!g.lines.length || g.mini) return;
+    const t = e.target as HTMLElement | null;
+    if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
+    if ((e.key === 'Shift' || e.key === 'Escape') && !e.repeat) { g.skip(); e.preventDefault(); return; }
+    if (e.key === 'Enter' && e.repeat) {
+      const now = performance.now(); if (now - lastRepeat > 160) { lastRepeat = now; g.next(); }
+      e.preventDefault();
+    }
+  });
   window.addEventListener('keydown', (e) => {
     if (e.repeat) return;
     const k = e.key.toLowerCase();
