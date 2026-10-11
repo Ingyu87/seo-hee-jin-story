@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useGame, player, HEROES } from './store';
 import { useModel } from './models';
+import { sfx } from './audio';
 
 export type World = {
   scale: number;
@@ -68,6 +69,7 @@ export function Player({ world }: { world: World }) {
   const taps = useGame((s) => s.taps);
   const spawnKey = useGame((s) => s.spawnKey);
   const t0 = useRef(0);
+  const stepT = useRef(0);
 
   useEffect(() => {
     const [x, y, z] = world.spawn;
@@ -82,7 +84,7 @@ export function Player({ world }: { world: World }) {
     let dx = 0, dz = 0;
     const kx = (keys['arrowright'] || keys['d'] ? 1 : 0) - (keys['arrowleft'] || keys['a'] ? 1 : 0);
     const kz = (keys['arrowdown'] || keys['s'] ? 1 : 0) - (keys['arrowup'] || keys['w'] ? 1 : 0);
-    const locked = g.sleeping || g.lines.length > 0;
+    const locked = g.sleeping || g.lines.length > 0 || !!g.mini;
     if (!locked && (kx || kz)) {
       if (g.sitting) g.standUp();
       if (g.target) useGame.setState({ target: null, pending: null });
@@ -107,7 +109,9 @@ export function Player({ world }: { world: World }) {
       diff = Math.atan2(Math.sin(diff), Math.cos(diff));
       player.rotY += diff * Math.min(1, dt * 12);
       world.onStep?.(p);
-    }
+      stepT.current += dt;
+      if (stepT.current > 0.32) { stepT.current = 0; sfx('step'); }
+    } else stepT.current = 0.25;
     p.y = groundY(world.grounds.current, p.x, p.z, p.y);
 
     const o = outer.current, i = inner.current;

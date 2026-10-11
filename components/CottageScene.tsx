@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import { useGame, player, DWARFS } from './store';
+import { useGame, player, DWARFS, SPK, T, useTx } from './store';
 import { useModel, useModelPart, MODELS, findNamed } from './models';
 import { Player, Npc, World } from './Player';
 import { Lights, FollowCam } from './common';
@@ -71,6 +71,7 @@ export function CottageScene() {
   const sitting = useGame((s) => s.sitting);
   const spawnKey = useGame((s) => s.spawnKey);
   const hover = useRef<THREE.Object3D | null>(null);
+  const tx = useTx();
 
   const { door, appleNode, chairs } = useMemo(() => {
     grounds.current = ['Ground', 'Floor', 'Rug', 'DoorPath'].map((n) => cottage.getObjectByName(n)).filter(Boolean) as THREE.Object3D[];
@@ -98,8 +99,8 @@ export function CottageScene() {
       if (p.x > -3.0 && !g.talked['welcome']) {
         useGame.setState({ talked: { ...g.talked, welcome: true }, target: null, pending: null });
         g.say([
-          { speaker: '박사', text: '오호! 손님이 왔구나! 일곱 난쟁이의 집에 온 걸 환영해!' },
-          { speaker: '백설공주', text: '우리 의자에 앉아서 같이 쉬자. 난쟁이들한테 말을 걸어 봐도 좋아!' },
+          { speaker: DWARFS[0].name, text: T('오호! 손님이 왔구나! 일곱 난쟁이의 집에 온 걸 환영해!', 'Oho! We have a guest! Welcome to the home of the seven dwarfs!') },
+          { speaker: SPK.snow, text: T('우리 의자에 앉아서 같이 쉬자. 난쟁이들한테 말을 걸어 봐도 좋아!', "Let's sit on a chair and rest. You can talk to the dwarfs too!") },
         ]);
       }
     },
@@ -183,18 +184,18 @@ export function CottageScene() {
       )}
       {!doorOpen && (
         <Html position={[-4.1, 2.9, DOOR_Z]} center style={{ pointerEvents: 'none' }}>
-          <div className="bubble">문을 눌러 봐! 🚪</div>
+          <div className="bubble">{tx(T('문을 눌러 봐! 🚪', 'Tap the door! 🚪'))}</div>
         </Html>
       )}
       <Player world={world} />
       {dwarfs.map((d) => (
         <Npc key={d.node} object={d.obj} name={d.node} position={[DWARF_SPOTS[d.node][0], 0.2, DWARF_SPOTS[d.node][1]]}
-          rotY={DWARF_SPOTS[d.node][2]} scale={DWARF_S} label={d.ko} onClick={(n) => talkTo(n, [DWARF_SPOTS[n][0], 0.2, DWARF_SPOTS[n][1]])} />
+          rotY={DWARF_SPOTS[d.node][2]} scale={DWARF_S} label={tx(d.name)} onClick={(n) => talkTo(n, [DWARF_SPOTS[n][0], 0.2, DWARF_SPOTS[n][1]])} />
       ))}
       <Npc object={snow} name="SnowWhiteHome" position={[3.05, 0.2, 0.35]} rotY={-1.4} scale={S * 1.02}
-        onClick={() => useGame.getState().say([{ speaker: '백설공주', text: '난쟁이들 집은 정말 아늑하다! 같이 앉을래?' }])} />
+        onClick={() => useGame.getState().say([{ speaker: SPK.snow, text: T('난쟁이들 집은 정말 아늑하다! 같이 앉을래?', "The dwarfs' home is so cozy! Want to sit together?") }])} />
       <Npc object={oldWoman} name="OldWoman" position={[-6.2, 0, -1.6]} rotY={1.2} scale={S} visible={!queenGone}
-        label="할머니" onClick={(n) => !queenGone && talkTo(n, [-6.2, 0, -1.6])} />
+        label={tx(T('할머니', 'Old woman'))} onClick={(n) => !queenGone && talkTo(n, [-6.2, 0, -1.6])} />
     </>
   );
 }

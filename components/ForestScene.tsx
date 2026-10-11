@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { useMemo, useRef } from 'react';
 import { useFrame, ThreeEvent } from '@react-three/fiber';
-import { useGame, player } from './store';
+import { useGame, player, HIDDEN, DWARFS, useTx } from './store';
+import { Html } from '@react-three/drei';
 import { useModel, useModelPart, MODELS } from './models';
 import { Player, Npc, World, groundY } from './Player';
 import { Lights, FollowCam } from './common';
@@ -81,6 +82,38 @@ function SnowWhite({ grounds }: { grounds: React.MutableRefObject<THREE.Object3D
   );
 }
 
+/** Hide-and-seek: three dwarfs peek out from behind trees beside the path. Tap them to find them. */
+const HIDE_SPOTS: Record<string, [number, number, number]> = {
+  Dopey: [3.0, -9, -1.2],
+  Bashful: [-3.1, -16.5, 1.4],
+  Sneezy: [2.9, -25, -1.0],
+};
+function HiddenDwarf({ node, grounds }: { node: string; grounds: React.MutableRefObject<THREE.Object3D[]> }) {
+  const obj = useModelPart(MODELS.dwarfs, node);
+  const found = useGame((s) => s.found.includes(node));
+  const tx = useTx();
+  const ref = useRef<THREE.Group>(null!);
+  const [dx, dz, ry] = HIDE_SPOTS[node];
+  const pos = useMemo(() => new THREE.Vector3(pathX(dz) + dx, 0, dz), [dx, dz]);
+  useFrame((st) => {
+    const g = ref.current; if (!g) return;
+    const t = st.clock.elapsedTime;
+    g.position.set(pos.x, groundY(grounds.current, pos.x, pos.z, 0), pos.z);
+    // peeking: lean in and out from behind the tree until found, then jump for joy
+    g.children[0].position.y = found ? Math.abs(Math.sin(t * 6)) * 0.25 : 0;
+    g.children[0].rotation.z = found ? 0 : Math.sin(t * 1.3 + dz) * 0.35;
+  });
+  const name = DWARFS.find((d) => d.node === node)!.name;
+  return (
+    <group ref={ref} rotation={[0, ry, 0]}
+      onClick={(e) => { e.stopPropagation(); useGame.getState().findHidden(node); }}
+      onPointerOver={() => (document.body.style.cursor = 'pointer')} onPointerOut={() => (document.body.style.cursor = '')}>
+      <group scale={S * 0.62}><primitive object={obj} /></group>
+      {found && <Html position={[0, 1.4, 0]} center style={{ pointerEvents: 'none' }}><div className="nametag">✨ {tx(name)}</div></Html>}
+    </group>
+  );
+}
+
 export function ForestScene() {
   const { forest, grounds } = useForest();
   const queen = useModelPart(MODELS.queen, 'Queen');
@@ -120,6 +153,7 @@ export function ForestScene() {
       <primitive object={forest} onClick={onGround} />
       <Player world={world} />
       <SnowWhite grounds={grounds} />
+      {HIDDEN.map((n) => <HiddenDwarf key={n} node={n} grounds={grounds} />)}
       <Npc object={queen} name="Queen" position={[pathX(-21) - 2.4, 0, -21]} rotY={0.6} scale={S} face={false} grounds={grounds}
         onClick={(n) => useGame.getState().moveTo(pathX(-21) - 1.0, -20.2, n)} />
     </>

@@ -1,5 +1,6 @@
 'use client';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
+import { unlockAudio } from './audio';
 import { Canvas, useThree, advance } from '@react-three/fiber';
 import { useProgress } from '@react-three/drei';
 import * as THREE from 'three';
@@ -13,7 +14,7 @@ import { Hud } from './Hud';
 function Loader() {
   const { active, progress } = useProgress();
   if (!active) return null;
-  return <div className="boot">동화책을 펼치는 중… {progress.toFixed(0)}%</div>;
+  return <div className="boot">{useGame.getState().lang === 'en' ? 'Opening the storybook…' : '동화책을 펼치는 중…'} {progress.toFixed(0)}%</div>;
 }
 
 function ExposeGl() {
@@ -32,13 +33,19 @@ if (CAPTURE) {
 export default function Game() {
   const scene = useGame((s) => s.scene);
   const key = useGame((s) => s.spawnKey);
+  // browsers only allow audio after a user gesture: unlock + start BGM on the first tap / key press
+  useEffect(() => {
+    const go = () => { unlockAudio(); window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
+    window.addEventListener('pointerdown', go); window.addEventListener('keydown', go);
+    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); };
+  }, []);
   return (
     <div className="game">
       <Canvas frameloop={CAPTURE ? 'never' : 'always'} shadows dpr={[1, 1.75]} camera={{ fov: 42, near: 0.1, far: 200, position: [0, 3, 8] }}
         gl={{ antialias: true, toneMapping: THREE.NeutralToneMapping, toneMappingExposure: 0.95, preserveDrawingBuffer: true }}
         onPointerMissed={() => useGame.getState().next()}>
         <ExposeGl />
-        {(scene === 'select' || scene === 'ending') && <Suspense key={`s${key}`} fallback={null}><SelectScene /></Suspense>}
+        {(scene === 'stories' || scene === 'select' || scene === 'ending') && <Suspense key={`s${key}`} fallback={null}><SelectScene /></Suspense>}
         {scene === 'forest' && <Suspense key={`f${key}`} fallback={null}><ForestScene /></Suspense>}
         {scene === 'cottage' && <Suspense key={`c${key}`} fallback={null}><CottageScene /></Suspense>}
       </Canvas>
