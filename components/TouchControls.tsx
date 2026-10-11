@@ -105,13 +105,28 @@ export function ZoomButtons() {
   );
 }
 
+let tipShown = false;
+/** Blue hop button (also shown during the run, where hopping carries you over rocks and thorns). */
+function JumpButton({ run = false }: { run?: boolean }) {
+  const tx = useTx();
+  return (
+    <button className={`jumpbtn ${run ? 'jump-run' : ''}`} aria-label={tx(T('점프', 'Jump'))}
+      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); jump(); }}
+      onContextMenu={(e) => e.preventDefault()}>
+      <span className="act-ico">⤴️</span><small>{tx(T('점프', 'Jump'))}</small>
+    </button>
+  );
+}
+
 function ActionButtons() {
   const act = useCurrentAction();
   const tx = useTx();
   // first-time tip so kids know what the big button is for
   const [tip, setTip] = useState(false);
   useEffect(() => {
-    if (localStorage.getItem('shj-tip-act')) return;
+    if (localStorage.getItem('shj-tip-act') || tipShown) return;
+    tipShown = true; // once per visit, and never again once it has been seen
+    try { localStorage.setItem('shj-tip-act', '1'); } catch {}
     setTip(true);
     const t = setTimeout(() => setTip(false), 15000);
     return () => clearTimeout(t);
@@ -126,11 +141,7 @@ function ActionButtons() {
             'When you get close to a friend this button glows yellow! ✨ Press it to talk, open doors and more 👇'))}
         </div>
       )}
-      <button className="jumpbtn" aria-label={tx(T('점프', 'Jump'))}
-        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); jump(); }}
-        onContextMenu={(e) => e.preventDefault()}>
-        <span className="act-ico">⤴️</span><small>{tx(T('점프', 'Jump'))}</small>
-      </button>
+      <JumpButton />
       <button className={`actbtn ${act ? 'ready' : ''}`} aria-label={tx(T('말하기 / 행동', 'Talk / Action'))}
         onPointerDown={(e) => {
           e.preventDefault(); e.stopPropagation();
@@ -160,22 +171,22 @@ export function TouchControls() {
   const touch = useTouchDevice();
   const scene = useGame((s) => s.scene);
   const hasLine = useGame((s) => s.lines.length > 0);
-  const mini = useGame((s) => s.mini);
-  const overlay = useGame((s) => s.guideOpen || s.bookOpen);
+  const overlay = useGame((s) => s.guideOpen);
   const sleeping = useGame((s) => s.sleeping);
   const running = useGame((s) => s.running);
+  const cutscene = useGame((s) => s.cutscene);
   useEffect(() => { document.body.classList.toggle('touch', touch); }, [touch]);
-  const play = (scene === 'forest' || scene === 'cottage') && !hasLine && !mini && !overlay && !sleeping;
+  const play = (scene === 'forest' || scene === 'cottage') && !hasLine && !overlay && !sleeping && !cutscene;
   const show = touch && play;
   const inWorld = scene === 'forest' || scene === 'cottage';
   useEffect(() => { if (!show) { stick.x = 0; stick.z = 0; stick.active = false; } }, [show]);
   // Zoom always available in world (including during dialogue). Pads only when free to move.
   if (!touch) {
-    if (!inWorld || mini || overlay) return null;
+    if (!inWorld || overlay) return null;
     return <div className="touchpad">{!running && <KeyPrompt />}<ZoomButtons /></div>;
   }
-  if (running) return <div className="touchpad run"><ZoomButtons /><Joystick run /></div>;
-  if (!show) return inWorld && !mini && !overlay ? <div className="touchpad"><ZoomButtons /></div> : null;
+  if (running && !hasLine && !overlay) return <div className="touchpad run"><ZoomButtons /><Joystick run /><JumpButton run /></div>;
+  if (!show) return inWorld && !overlay ? <div className="touchpad"><ZoomButtons /></div> : null;
   return (
     <div className="touchpad">
       <Joystick />

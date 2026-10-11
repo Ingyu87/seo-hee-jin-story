@@ -21,7 +21,8 @@ function Loader() {
 function ExposeGl() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
-  if (typeof window !== 'undefined') Object.assign((window as unknown as { __snow: Record<string, unknown> }).__snow, { gl, scene });
+  const camera = useThree((s) => s.camera);
+  if (typeof window !== 'undefined') Object.assign((window as unknown as { __snow: Record<string, unknown> }).__snow, { gl, scene, camera });
   return null;
 }
 

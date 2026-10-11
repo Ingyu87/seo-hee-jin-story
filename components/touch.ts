@@ -39,10 +39,11 @@ export function nearestAct(): (Act & { id: string }) | null {
 /** What the action button does right now (null = nothing to do). */
 export function currentAction(): { icon: string; label?: Tx; run: () => void } | null {
   const g = useGame.getState();
-  if (g.mini || g.guideOpen || g.bookOpen) return null;
+  if (g.guideOpen) return null;
   if (g.scene !== 'forest' && g.scene !== 'cottage') return null;
   const line = g.lines[g.lineIdx];
   if (line) return line.choices ? null : { icon: '▶', label: T('다음', 'Next'), run: () => g.next() };
+  if (g.cutscene) return null;
   if (g.sleeping) return { icon: '👆', label: T('깨우기', 'Wake up'), run: () => g.tap() };
   if (g.sitting) return { icon: '🧍', label: T('일어나기', 'Stand up'), run: () => g.standUp() };
   const a = nearestAct();
@@ -61,7 +62,7 @@ if (typeof window !== 'undefined') {
   let lastRepeat = 0;
   window.addEventListener('keydown', (e) => {
     const g = useGame.getState();
-    if (!g.lines.length || g.mini) return;
+    if (!g.lines.length) return;
     const t = e.target as HTMLElement | null;
     if (t && /^(INPUT|TEXTAREA)$/.test(t.tagName)) return;
     if ((e.key === 'Shift' || e.key === 'Escape') && !e.repeat) { g.skip(); e.preventDefault(); return; }

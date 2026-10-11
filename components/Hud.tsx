@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { escort, useGame, HEROES, STORIES, STICKERS, HIDDEN, SPK, T, Tx, useTx, DWARFS } from './store';
-import { Minigames } from './Minigames';
+import { escort, useGame, HEROES, STORIES, HIDDEN, SPK, T, Tx, useTx, DWARFS } from './store';
 import { TouchControls, useTouchDevice } from './TouchControls';
 import { useState } from 'react';
 import { sfx } from './audio';
@@ -83,13 +82,15 @@ const GUIDE: { icon: string; title: Tx; body: Tx }[] = [
   { icon: '🍎', title: T('백설공주 지키기', 'Protect Snow White'), body: T('너는 백설공주를 돕는 친구예요! 난쟁이들이 일하러 가면 수상한 할머니가 찾아와 사과를 줘요. “먹지 마!”라고 알려 주거나 식탁 위 사과를 치우면 파티 엔딩, 지켜보기만 하면 백설공주가 잠들어서 화면을 5번 톡톡 눌러 깨워야 해요.', "You are Snow White's helper! When the dwarfs leave for work, a strange old woman brings an apple. Warn Snow White or take the apple away for the party ending; if you just watch, she falls asleep and you tap 5 times to wake her.") },
 ];
 GUIDE.push(
-  { icon: '🎮', title: T('미니게임', 'Mini-games'), body: T('백설공주에게 꽃 따 주기(15초), 투덜이와 가위바위보, 박사와 사과 피하기! 하고 싶을 때 골라서 놀아요.', 'Pick flowers for Snow White (15 s), rock-paper-scissors with Grumpy, and apple dodge with Doc! Play them whenever you like.') },
+  { icon: '🏃', title: T('숲길 달리기', 'Forest run'), body: T('왕비가 사라지면 백설공주와 오두막까지 달려요. 저절로 앞으로 가니까 ◀ ▶(조이스틱·밀기·방향키)로 가시덤불과 바위를 피하고, ⤴️ 점프(스페이스)로 넘어가요. 막혀도 잠깐 기다리면 알아서 옆으로 비켜 가요. 어려우면 ⏩ 건너뛰기!', 'After the Queen vanishes you run with Snow White to the cottage. You move forward by yourself: steer ◀ ▶ (stick / swipe / arrow keys) around thorns and rocks, or ⤴️ jump (Space) over them. If you get stuck, wait a moment and you sidestep automatically. Too hard? ⏩ Skip!') },
   { icon: '🔍', title: T('숨바꼭질', 'Hide-and-seek'), body: T('오두막에서 박사가 “숲에서 숨바꼭질하던 친구 3명이 안 돌아왔어!” 하고 도움을 청하면 “도와줄게!”를 골라요. 숲 나무 옆에 숨은 난쟁이에게 가까이 가서 🔍 버튼을 눌러요!', 'In the cottage Doc asks for help: three friends playing hide-and-seek in the forest haven\'t come back. Choose "I\'ll help!", then get close to the dwarfs hiding by the trees and press 🔍!') },
 );
 const CONTENTS: Tx[] = [
   T('숲속 길에서 백설공주 만나기', 'Meet Snow White on the forest path'),
-  T('함께 일곱 난쟁이의 오두막으로 가기', "Walk together to the dwarfs' cottage"),
+  T('나무 뒤에 숨어서 왕비와 마법 거울 엿듣기', 'Hide behind a tree and overhear the Queen and her magic mirror'),
+  T('백설공주와 오두막까지 숲길 달리기', "Run with Snow White along the forest path to the dwarfs' cottage"),
   T('문 열고 들어가 난쟁이들과 인사하기', 'Open the door and say hi to the dwarfs'),
+  T('박사 부탁: 숲에 숨은 난쟁이 3명 찾기', "Doc's request: find the 3 dwarfs hiding in the forest"),
   T('의자에 앉아 쉬고 난쟁이들 이야기 듣기', 'Sit down and hear the dwarfs\' stories'),
   T('난쟁이들이 광산으로 출발! 백설공주 지켜 주기', 'The dwarfs leave for the mine — guard Snow White'),
   T('변장한 왕비의 독 사과: 백설공주를 도와줘!', "The disguised Queen's poison apple: help Snow White!"),
@@ -171,39 +172,6 @@ function Guide() {
   );
 }
 
-function Book() {
-  const open = useGame((s) => s.bookOpen); const book = useGame((s) => s.book); const tx = useTx();
-  if (!open) return null;
-  return (
-    <div className="guide-wrap" onClick={() => useGame.getState().setBook(false)}>
-      <div className="guide" onClick={(e) => e.stopPropagation()}>
-        <h2>📖 {tx(T('스티커 북', 'Sticker book'))} <small>{book.filter((b) => STICKERS.some((x) => x.id === b)).length}/{STICKERS.length}</small></h2>
-        <div className="stickers">
-          {STICKERS.map((st) => {
-            const got = book.includes(st.id);
-            return (
-              <div key={st.id} className={`sticker ${got ? 'got' : ''}`}>
-                <span className="ico">{got ? st.icon : '❔'}</span>
-                <b>{got ? tx(st.name) : '???'}</b>
-                <small>{tx(st.how)}</small>
-              </div>
-            );
-          })}
-        </div>
-        <button className="start" onClick={() => { sfx('click'); useGame.getState().setBook(false); }}>{tx(UI.close)}</button>
-      </div>
-    </div>
-  );
-}
-
-const STAR_ROWS: { id: string; label: Tx }[] = [
-  { id: 'ending', label: T('엔딩 도착', 'Reached an ending') },
-  { id: 'flowers', label: T('꽃 따기', 'Flower picking') },
-  { id: 'hide', label: T('숨바꼭질', 'Hide-and-seek') },
-  { id: 'rps', label: T('가위바위보', 'Rock-paper-scissors') },
-  { id: 'dodge', label: T('사과 피하기', 'Apple dodge') },
-];
-
 /**
  * Story goal (what to do next, in story order): forest meet → overhear the Queen → walk to the cottage →
  * greet the dwarfs → help Doc (hide-and-seek) → dwarfs leave → protect Snow White from the apple → ending.
@@ -211,40 +179,37 @@ const STAR_ROWS: { id: string; label: Tx }[] = [
 type GoalState = ReturnType<typeof useGame.getState>;
 function storyGoal(s: GoalState): { step: number; text: Tx } | null {
   if (s.scene === 'forest') {
-    if (s.seek === 'on') return { step: 5, text: T(`🔍 숨은 난쟁이 찾기 (${s.found.length}/3) — 덤불 뒤를 살펴봐!`, `🔍 Find the hidden dwarfs (${s.found.length}/3) — look behind the bushes!`) };
-    if (s.seek === 'done') return { step: 6, text: T('🏠 난쟁이들과 오두막으로 돌아가기', '🏠 Go back to the cottage with the dwarfs') };
+    if (s.seek === 'on') return { step: 6, text: T(`🔍 숨은 난쟁이 찾기 (${s.found.length}/3) — 모자·“에취!” 소리를 찾아봐!`, `🔍 Find the hidden dwarfs (${s.found.length}/3) — look for hats, listen for "ACHOO!"`) };
+    if (s.seek === 'done') return { step: 7, text: T('🏠 난쟁이들과 오두막으로 돌아가기', '🏠 Go back to the cottage with the dwarfs') };
     if (!s.metSnowWhite) return { step: 1, text: T('💬 숲속 백설공주에게 말 걸기', '💬 Talk to Snow White in the forest') };
-    if (!s.swFollow) return { step: 2, text: T('🤝 백설공주를 도와 같이 가기', '🤝 Help Snow White — walk with her') };
-    if (!s.talked['qGone']) return { step: 3, text: T('👂 가시를 피해 숲길을 가며 왕비의 비밀 엿듣기', '👂 Lead Snow White around the thorns — and overhear the Queen') };
-    return { step: 4, text: T('🌿 가시덤불을 피해 백설공주를 오두막까지 안내하기', '🌿 Guide Snow White around the thorns to the cottage') };
+    if (!s.talked['hide']) return { step: 2, text: T('🤝 백설공주를 도와 같이 가기', '🤝 Help Snow White — go with her') };
+    if (!s.talked['qGone']) return { step: 3, text: T('🌳 쉿! 나무 뒤에 숨어서 왕비 엿듣기', '🌳 Shh! Hide behind the tree and listen to the Queen') };
+    return { step: 4, text: T('🏃 가시덤불을 피해 백설공주와 오두막까지 달리기', '🏃 Run with Snow White to the cottage — dodge the thorns') };
   }
   if (s.scene !== 'cottage') return null;
-  if (s.sleeping) return { step: 10, text: T(`👆 화면을 톡톡! 백설공주 깨우기 (${s.taps}/5)`, `👆 Tap tap! Wake Snow White (${s.taps}/5)`) };
-  if (s.apple === 'table' || s.apple === 'held') return { step: 9, text: T('🍎 수상한 사과! 백설공주를 지켜 줘', '🍎 A suspicious apple! Protect Snow White') };
-  if (s.dwarfs === 'leaving' || s.dwarfs === 'away') return { step: 8, text: T('🛡️ 난쟁이들이 없는 동안 백설공주 지키기', '🛡️ Look after Snow White while the dwarfs are away') };
-  if (!s.talked['welcome']) return { step: 4, text: s.doorOpen ? T('💬 난쟁이에게 인사하기', '💬 Say hello to a dwarf') : T('🚪 오두막 문 열기', '🚪 Open the cottage door') };
-  if (s.seek === 'off') return { step: 5, text: T('🙋 박사의 부탁 들어주기 (박사에게 말 걸기)', '🙋 Help Doc (talk to Doc)') };
+  if (s.apple === 'eaten' && !s.sleeping) return { step: 12, text: T('🌟 백설공주가 깨어났어요!', '🌟 Snow White is awake!') };
+  if (s.apple === 'refused') return { step: 12, text: T('🎉 백설공주를 지켰어요!', '🎉 You protected Snow White!') };
+  if (s.sleeping) return { step: 11, text: T(`👆 화면을 톡톡! 백설공주 깨우기 (${s.taps}/5)`, `👆 Tap tap! Wake Snow White (${s.taps}/5)`) };
+  if (s.apple === 'table' || s.apple === 'held') return { step: 10, text: T('🍎 수상한 사과! 백설공주를 지켜 줘', '🍎 A suspicious apple! Protect Snow White') };
+  if (s.dwarfs === 'leaving' || s.dwarfs === 'away') return { step: 9, text: T('🛡️ 난쟁이들이 없는 동안 백설공주 지키기', '🛡️ Look after Snow White while the dwarfs are away') };
+  if (!s.talked['welcome']) return { step: 5, text: s.doorOpen ? T('💬 난쟁이에게 인사하기', '💬 Say hello to a dwarf') : T('🚪 오두막 문 열기', '🚪 Open the cottage door') };
+  if (s.seek === 'off') return { step: 6, text: T('🙋 박사의 부탁 들어주기 (박사에게 말 걸기)', '🙋 Help Doc (talk to Doc)') };
   const chats = DWARFS.filter((d) => s.talked[d.node]).length;
-  return { step: 7, text: T(`🪑 의자에 앉고 난쟁이들과 이야기하기 (${chats}/7)`, `🪑 Sit down and chat with the dwarfs (${chats}/7)`) };
+  return { step: 8, text: T(`🪑 의자에 앉고 난쟁이들과 이야기하기 (${chats}/7)`, `🪑 Sit down and chat with the dwarfs (${chats}/7)`) };
 }
 
 function StoryGoal() {
   const s = useGame(); const tx = useTx();
   const goal = storyGoal(s);
-  const last = useRef(0);
-  const [cheer, setCheer] = useState(0);
+  const best = useRef(0); // the goal bar only ever moves forward
+  const [flash, setFlash] = useState(false);
   useEffect(() => {
-    if (!goal) { last.current = 0; return; }
-    if (last.current && goal.step > last.current) { setCheer((c) => c + 1); sfx('sparkle'); }
-    last.current = goal.step;
+    if (!goal) { best.current = 0; return; }
+    if (best.current && goal.step > best.current) { setFlash(true); const t = setTimeout(() => setFlash(false), 900); best.current = goal.step; return () => clearTimeout(t); }
+    best.current = Math.max(best.current, goal.step);
   }, [goal?.step]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!goal || s.mini) return null;
-  return (
-    <>
-      <div className="goal" key={goal.step}><b>{tx(T('할 일', 'Goal'))}</b> {tx(goal.text)}</div>
-      {cheer > 0 && <Cheer key={cheer} />}
-    </>
-  );
+  if (!goal) return null;
+  return <div className={`goal ${flash ? 'done-flash' : ''}`} key={goal.step}><b>{tx(T('할 일', 'Goal'))}</b> {tx(goal.text)}</div>;
 }
 
 /** Run-escort overlay (approved mockup): yellow banner, ←→ tip pill, speed lines at the screen edges. */
@@ -255,24 +220,9 @@ function RunHud() {
     <>
       <div className="speedlines" aria-hidden />
       <div className="runbanner"><span className="rb-apple">🍎</span><b>{tx(T('백설공주를 오두막까지!', 'Snow White to the cottage!'))}</b><span className="rb-sign">🪧</span></div>
-      <div className="runtip"><span>💗</span> <b>← →</b> {tx(T('피하기', 'Dodge'))}</div>
+      <div className="runtip"><span>💗</span> <b>← →</b> {tx(T('피하기', 'Dodge'))} · ⤴️ {tx(T('점프', 'Jump'))}</div>
       {!skip && <button className="runskip" onClick={() => { sfx('click'); escort.skip = true; setSkip(true); }}>{tx(T('⏩ 건너뛰기', '⏩ Skip'))}</button>}
     </>
-  );
-}
-
-/** Short "well done!" burst whenever a story step is completed. */
-function Cheer() {
-  const tx = useTx();
-  const [on, setOn] = useState(true);
-  useEffect(() => { const t = setTimeout(() => setOn(false), 1600); return () => clearTimeout(t); }, []);
-  const bits = useRef(Array.from({ length: 16 }, (_, i) => ({ e: ['🌸', '✨', '🍎', '🌼', '💖'][i % 5], x: (Math.random() - 0.5) * 260, y: -80 - Math.random() * 160, r: (Math.random() - 0.5) * 540, d: Math.random() * 0.15 })));
-  if (!on) return null;
-  return (
-    <div className="cheer" aria-hidden>
-      <div className="cheer-word">{tx(T('잘했어! 🎉', 'Well done! 🎉'))}</div>
-      {bits.current.map((b, i) => <span key={i} className="cheer-bit" style={{ '--x': `${b.x}px`, '--y': `${b.y}px`, '--r': `${b.r}deg`, animationDelay: `${b.d}s` } as React.CSSProperties}>{b.e}</span>)}
-    </div>
   );
 }
 
@@ -344,7 +294,9 @@ export function Hud() {
       <div className="ending">
         <div className="brand small">{BRAND}</div>
         <h2>{tx(UI.endTitle)}</h2>
+        <span className="end-kind">{tx(s.ending === 'safe' ? T('🎉 파티 엔딩', '🎉 Party ending') : T('🌟 깨어나기 엔딩', '🌟 Wake-up ending'))}</span>
         <p>{tx(s.ending === 'safe' ? UI.endSafe(h.name) : UI.endWoke(h.name))}</p>
+        <div className="fin">{tx(T('~ 끝 ~', '~ The End ~'))}</div>
         <div className="row">
           <button onClick={() => { sfx('click'); s.start(); }}>{tx(UI.again)}</button>
           <button onClick={() => { sfx('click'); s.reset(); }}>{tx(UI.change)}</button>
@@ -358,10 +310,11 @@ export function Hud() {
           <span className="who" style={{ background: h.color }}>{tx(h.name)} · {tx(UI.age(h.age))}</span>
           <span className="place">{tx(s.scene === 'forest' ? UI.forest : UI.cottage)}</span>
           {s.scene === 'forest' && s.seek === 'on' && <span className="seek">🔍 {s.found.length}/{HIDDEN.length}</span>}
-          {!line && !s.mini && !s.running && <button className="ghost" onClick={() => { if (s.metSnowWhite && !window.confirm(tx(T('처음부터 다시 할까?', 'Start over from the beginning?')))) return; sfx('click'); s.home(); }}>{tx(UI.home)}</button>}
+          {!line && !s.running && !s.cutscene && <button className="ghost" onClick={() => { if (s.metSnowWhite && !window.confirm(tx(T('처음부터 다시 할까?', 'Start over from the beginning?')))) return; sfx('click'); s.home(); }}>{tx(UI.home)}</button>}
         </div>
-        {s.running && !line && !s.mini ? <RunHud /> : <StoryGoal />}
-        {s.hint && !line && !s.mini && !s.running && <div className="hint" key={s.hint.ko}>{tx(s.hint)}</div>}
+        {s.running && !line ? <RunHud /> : <StoryGoal />}
+        {s.card && <div className="storycard" key={s.card.ko}>{tx(s.card)}</div>}
+        {s.hint && !line && !s.running && <div className="hint" key={s.hint.ko}>{tx(s.hint)}</div>}
         {s.toast && <div className="toast">{tx(s.toast)}</div>}
         {s.scene === 'forest' && !s.running && ((s.swFollow && !!s.talked['qGone']) || s.seek !== 'off') && !line && ( /* never skips the Queen's poison-apple scene */
           <button className="shortcut" onClick={() => { sfx('click'); s.goto('cottage'); }}>{tx(UI.toCottage)}</button>
@@ -383,10 +336,8 @@ export function Hud() {
     <div className={`hud scene-${s.scene}`}>
       {body}
       <TouchControls />
-      <Minigames />
       <Toolbar />
       <Guide />
-      <Book />
     </div>
   );
 }

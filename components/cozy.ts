@@ -110,3 +110,16 @@ export function cozyCottage(root: THREE.Object3D) {
     if (/^(Rug|FloorPlank)/.test(o.name)) mesh.castShadow = false;
   });
 }
+
+/** Forest view of the same cottage: log walls / dark timber like the cabin interior. */
+export function cozyExterior(root: THREE.Object3D) {
+  if (root.userData.cozyExt) return;
+  root.userData.cozyExt = true;
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh; if (!mesh.isMesh || !/^Cottage/.test(o.name)) return;
+    const m = mesh.material as THREE.MeshStandardMaterial; if (!m) return;
+    if (m.name === 'CottageWall') patchOnce(m, 'cozyExt', logWalls);
+    if (m.name === 'Timber') patchOnce(m, 'cozyExt', (w) => { w.color.set('#5a3418'); });
+    if (m.name === 'WindowGlow') patchOnce(m, 'cozyExt', (w) => { w.emissive = new THREE.Color('#ffd27a'); w.emissiveIntensity = 0.6; });
+  });
+}

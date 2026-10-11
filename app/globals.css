@@ -104,44 +104,8 @@ button { font-family: inherit; cursor: pointer; }
 @font-face { font-family: 'Jua'; src: url('/fonts/jua-brand.woff') format('woff'); font-display: swap; unicode-range: U+0020-007A; }
 .brand { font-family: 'Jua', ui-rounded, system-ui, sans-serif; font-weight: 400; }
 
-/* ---- stars, sticker book, mini-games ---- */
-.seek, .starcount { background: #fffaf3e6; font-weight: 800; padding: 6px 11px; border-radius: 999px; box-shadow: 0 3px 10px #0002; white-space: nowrap; font-size: 14px; }
-.stars { margin: 4px 0 12px; }
-.star-line { font-size: 34px; letter-spacing: 4px; color: #e0d6cf; }
-.star-line .on { color: #ffc107; text-shadow: 0 2px 0 #e0a800; }
-.star-list { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 4px; }
-.star-list span { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #eee; color: #9e9e9e; }
-.star-list span.on { background: #fff3c4; color: #6d4c41; }
-.guide h2 small { font-size: 15px; color: #8d6e63; }
-.stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-bottom: 12px; }
-.sticker { background: #f1ebe6; border-radius: 16px; padding: 10px 8px; text-align: center; display: flex; flex-direction: column; gap: 3px; border: 3px dashed #d7ccc8; }
-.sticker.got { background: #fff; border: 3px solid #ffd54f; }
-.sticker .ico { font-size: 34px; }
-.sticker b { font-size: 14px; color: #5d4037; }
-.sticker small { font-size: 11px; color: #8d6e63; font-weight: 600; }
-.mini-wrap { position: absolute; inset: 0; background: #3e2a2a55; display: flex; align-items: center; justify-content: center; padding: 12px; z-index: 8; }
-.mini { width: min(560px, 100%); background: #fffaf3; border: 5px solid #ffd54f; border-radius: 24px; padding: 14px; box-shadow: 0 14px 40px #0004; display: flex; flex-direction: column; gap: 10px; }
-.mini-head { display: flex; flex-direction: column; text-align: center; }
-.mini-head b { font-size: 22px; color: #e24a84; }
-.mini-head span { font-size: 14px; font-weight: 700; color: #6d4c41; }
-.mini-stats { display: flex; justify-content: space-between; font-weight: 900; font-size: 18px; color: #5d4037; }
-.field { position: relative; height: min(52vh, 360px); border-radius: 18px; overflow: hidden; touch-action: none; user-select: none; }
-.meadow { background: radial-gradient(circle at 30% 20%, #c8f0a8, #86c95e); }
-.shelf { background: linear-gradient(#fbe7c6, #f3d29b); }
-.flower { position: absolute; transform: translate(-50%, -50%); font-size: 40px; border: 0; background: transparent; padding: 4px; animation: pop .25s ease-out; cursor: pointer; }
-.mini-result { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 56px; font-weight: 900; color: #fff; text-shadow: 0 3px 0 #0003; }
-.mini-tip { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); background: #fffaf3; padding: 8px 14px; border-radius: 14px; font-weight: 800; text-align: center; width: max-content; max-width: 90%; }
-.apple { position: absolute; transform: translate(-50%, -50%); font-size: 30px; pointer-events: none; }
-.dodger { position: absolute; bottom: 4%; transform: translateX(-50%); color: #fff; font-weight: 900; padding: 8px 14px; border-radius: 999px; border: 3px solid #fff; box-shadow: 0 4px 10px #0003; white-space: nowrap; }
-.rps-board { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 6px 0; }
-.rps-vs { display: flex; align-items: center; gap: 18px; font-weight: 900; color: #8d6e63; }
-.rps-vs .big { font-size: 64px; }
-.rps-msg { font-weight: 800; font-size: 18px; min-height: 1.4em; }
-.rps-btns { display: flex; gap: 10px; }
-.rps-btns button { width: 92px; padding: 10px 0; border: 0; border-radius: 18px; background: linear-gradient(#ffe082, #ffca28); box-shadow: 0 4px 0 #e0a800; display: flex; flex-direction: column; align-items: center; }
-.rps-btns button span { font-size: 38px; }
-.rps-btns button small { font-weight: 800; color: #5d4037; }
-.rps-btns button:disabled { opacity: .5; }
+/* ---- hide-and-seek counter ---- */
+.seek { background: #fffaf3e6; font-weight: 800; padding: 6px 11px; border-radius: 999px; box-shadow: 0 3px 10px #0002; white-space: nowrap; font-size: 14px; }
 @media (max-width: 560px) {
   .seek, .starcount { font-size: 12px; padding: 5px 8px; }
   .rps-btns button { width: 80px; }
@@ -152,7 +116,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 /* keep HUD + overlays above drei <Html> 3D labels (which use z-index up to 16777271) */
 .hud { z-index: 16777300; }
-.flower { animation: none; }
 @keyframes bloom { from { transform: translate(-50%, -50%) scale(.4); } }
 
 /* ---- on-screen touch controls (phones/tablets) ---- */
@@ -244,19 +207,7 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
   padding: 5px 12px; border-radius: 999px; font-weight: 800; font-size: 13px; color: #6b3a4b; width: max-content; max-width: 94vw; text-align: center; pointer-events: none; animation: pop .35s ease-out; box-shadow: 0 2px 8px #0001; }
 .goal b { background: #ff7fb0; color: #fff; border-radius: 999px; padding: 1px 8px; margin-right: 4px; font-size: 12px; }
 .scene-forest .hint, .scene-cottage .hint { top: max(136px, calc(env(safe-area-inset-top) + 128px)) !important; }
-.cheer { position: absolute; left: 50%; top: 34%; pointer-events: none; z-index: 30; }
-.cheer-word { position: absolute; transform: translate(-50%, -50%); font-size: 30px; font-weight: 900; color: #ff4f93; white-space: nowrap;
-  text-shadow: 0 3px 0 #fff, 0 0 12px #fff; animation: cheerword 1.6s ease-out forwards; }
-.cheer-bit { position: absolute; font-size: 24px; animation: cheerbit 1.3s ease-out forwards; opacity: 0; }
-@keyframes cheerword { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 0; } 18% { transform: translate(-50%, -50%) scale(1.15); opacity: 1; } 30% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { transform: translate(-50%, -70%) scale(1); opacity: 0; } }
-@keyframes cheerbit { 0% { transform: translate(0, 0) rotate(0); opacity: 1; } 100% { transform: translate(var(--x), calc(var(--y) + 180px)) rotate(var(--r)); opacity: 0; } }
 
-.pop-score { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ff4f93; text-shadow: 0 2px 0 #fff; pointer-events: none; animation: popscore .8s ease-out forwards; }
-@keyframes popscore { 0% { opacity: 1; transform: translate(-50%, -50%) scale(.6); } 30% { transform: translate(-50%, -90%) scale(1.25); } 100% { opacity: 0; transform: translate(-50%, -190%) scale(1); } }
-.mini-stats .hurry { color: #e53935; animation: hurry .5s ease-in-out infinite alternate; display: inline-block; }
-@keyframes hurry { from { transform: scale(1); } to { transform: scale(1.25); } }
-.mini-result small { display: block; font-size: 16px; margin-top: 6px; }
-.flower { transition: transform .1s; } .flower:active { transform: translate(-50%, -50%) scale(1.4); }
 
 /* hints fade away after a while — the goal pill stays */
 .scene-forest .hint, .scene-cottage .hint { animation: pop .25s ease-out, hintfade 9s ease-in forwards; }
@@ -293,3 +244,20 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
 .zoombtns, .hud > .zoombtns, .touchpad .zoombtns { top: max(150px, calc(env(safe-area-inset-top) + 140px)); right: max(8px, env(safe-area-inset-right)); gap: 6px; z-index: 20; }
 .zoombtns button { width: 42px; height: 42px; font-size: 24px; }
 .runskip { right: auto; left: max(12px, env(safe-area-inset-left)); }
+
+/* jump button during the run (bottom-right, big), the ←→ tip moves above it on phones */
+.jumpbtn.jump-run { right: max(18px, env(safe-area-inset-right)); bottom: max(22px, calc(env(safe-area-inset-bottom) + 12px)); width: 86px; height: 86px; }
+.jumpbtn.jump-run .act-ico { font-size: 32px; }
+body.touch .runtip { bottom: max(124px, calc(env(safe-area-inset-bottom) + 116px)); }
+/* little sound-clue / heigh-ho speech bubbles above characters */
+.bubble.cue { font-size: 15px; color: #6b3a4b; border: 2px solid #ffd54f; animation: pop .3s ease-out; }
+/* story caption card (dwarfs leave, etc.) */
+.storycard { position: absolute; left: 50%; top: 30%; transform: translate(-50%, -50%); z-index: 12; pointer-events: none; background: #fffaf0f2; border: 4px solid #ffd54f;
+  border-radius: 22px; padding: 14px 22px; font-weight: 900; font-size: clamp(17px, 4.6vw, 24px); color: #5a3416; text-align: center; max-width: 88vw; box-shadow: 0 8px 24px #0003; animation: cardin 3s ease-out forwards; }
+@keyframes cardin { 0% { opacity: 0; transform: translate(-50%, -40%) scale(.9); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; } }
+/* goal pill: a quiet tick when a step is done (no confetti) */
+.goal.done-flash b { animation: tick .8s ease-out; }
+@keyframes tick { 0% { background: #66bb6a; } 100% { background: #ff7fb0; } }
+/* ending */
+.ending .end-kind { display: inline-block; background: #fff3c4; color: #6d4c41; border-radius: 999px; padding: 3px 12px; font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.ending .fin { font-family: 'Jua', ui-rounded, system-ui, sans-serif; font-size: 22px; color: #e24a84; margin: 6px 0 10px; }

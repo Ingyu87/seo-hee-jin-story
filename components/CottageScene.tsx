@@ -5,7 +5,7 @@ import { useFrame, useThree, ThreeEvent } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import { useGame, player, DWARFS, SPK, T, useTx, npcPos, walkNpc, npcGoal, HIDDEN, HEROES, SEEK_ASK } from './store';
 import { useModel, useModelPart, MODELS, findNamed } from './models';
-import { Player, Npc, World } from './Player';
+import { Player, Npc, World, Separation, sepCheck } from './Player';
 import { Lights, FollowCam } from './common';
 import { useAct, Act } from './touch';
 import { cozyCottage, DINING_DX, BED_ZONE } from './cozy';
@@ -16,7 +16,7 @@ const DOOR_Z = 1.2; // centre of the door opening (glTF z)
 
 // interior layout (glTF metres): room x∈[-4,4], z∈[-3,3]; front wall cut away (dollhouse), door on the left wall.
 const DWARF_SPOTS: Record<string, [number, number, number]> = {
-  Doc: [3.15, -1.35, -0.6],
+  Doc: [3.0, -0.3, -0.9],
   Grumpy: [3.1, 1.75, -1.2],
   Happy: [1.75, 2.05, 0.2],
   Sleepy: [-1.45, -2.3, 0],
@@ -76,7 +76,7 @@ function blocked(x: number, z: number) {
 function npcBlocked(x: number, z: number) {
   if (blocked(x, z)) return true;
   if (x < -3.4 && x > -4.4) return true; // doorway
-  return Math.hypot(player.pos.x - x, player.pos.z - z) < 0.6;
+  return !sepCheck.on && Math.hypot(player.pos.x - x, player.pos.z - z) < 0.6;
 }
 
 /** Warm, gently flickering light from the fireplace. */
@@ -103,6 +103,7 @@ export function CottageScene() {
   const sleeping = useGame((s) => s.sleeping);
   const seek = useGame((s) => s.seek);
   const spawnKey = useGame((s) => s.spawnKey);
+  const hasLine = useGame((s) => s.lines.length > 0);
   const hover = useRef<THREE.Object3D | null>(null);
   const tx = useTx();
 
@@ -162,7 +163,7 @@ export function CottageScene() {
     useAct(d.node, { icon: '💬', label: T(`${d.name.ko}와 이야기하기`, `Talk to ${d.name.en}`), r: 1.5, pos: () => (useGame.getState().dwarfs !== 'home' || (useGame.getState().seek !== 'done' && HIDDEN.includes(d.node)) ? null : npcPos[d.node] ? [npcPos[d.node].x, npcPos[d.node].z] : [DWARF_SPOTS[d.node][0], DWARF_SPOTS[d.node][1]]), run: () => useGame.getState().interact(d.node) } as Act);
   });
   useAct('SnowWhiteHome', { icon: '💬', label: T('백설공주와 이야기하기', 'Talk to Snow White'), r: 1.4, pos: () => (npcPos.SnowWhiteHome ? [npcPos.SnowWhiteHome.x, npcPos.SnowWhiteHome.z] : [-0.4, 1.7]), run: () => useGame.getState().interact('SnowWhiteHome') });
-  useAct('OldWoman', { icon: '💬', label: T('할머니와 이야기하기', 'Talk to the old woman'), r: 1.8, pos: () => (useGame.getState().queenGone || (useGame.getState().dwarfs === 'home' && useGame.getState().apple === 'hidden') ? null : npcPos.OldWoman ? [npcPos.OldWoman.x, npcPos.OldWoman.z] : [-6.2, -1.6]), run: () => useGame.getState().interact('OldWoman') });
+  useAct('OldWoman', { icon: '💬', label: T('할머니와 이야기하기', 'Talk to the old woman'), r: 1.8, pos: () => (useGame.getState().queenGone || (useGame.getState().dwarfs !== 'away' && useGame.getState().apple === 'hidden') ? null : npcPos.OldWoman ? [npcPos.OldWoman.x, npcPos.OldWoman.z] : [-6.2, -1.6]), run: () => useGame.getState().interact('OldWoman') });
 
   // conversation staging: if the NPC you talk to stands in front of / behind you (as seen from the dollhouse
   // camera), step beside them so the two-shot shows both faces side by side instead of one hiding the other
@@ -184,7 +185,7 @@ export function CottageScene() {
   useFrame((st) => {
     const g = useGame.getState();
     if (g.talked['welcome'] && welcomeAt.current === null && !g.lines.length) welcomeAt.current = st.clock.elapsedTime;
-    if (g.dwarfs !== 'home' || g.apple !== 'hidden' || g.lines.length || g.mini || welcomeAt.current === null) return;
+    if (g.dwarfs !== 'home' || g.apple !== 'hidden' || g.lines.length || welcomeAt.current === null) return;
     const chats = DWARFS.filter((d) => g.talked[d.node]).length;
     const waited = st.clock.elapsedTime - welcomeAt.current;
     if ((g.talked['sat'] && (chats >= 2 || waited > 25)) || chats >= 3 || waited > 45) g.dwarfsLeave();
@@ -203,6 +204,7 @@ export function CottageScene() {
     if (dwarfState === 'away') {
       // the "old woman" (the Queen in disguise) walks in through the door straight to Snow White
       const sw = npcPos.SnowWhiteHome;
+      const ow = npcPos.OldWoman; if (ow) ow.set(-9.5, ow.y, DOOR_Z);
       walkNpc('OldWoman', [[-5.6, DOOR_Z], [-4.75, DOOR_Z], [-3.0, DOOR_Z], sw ? [sw.x - 1.1, Math.max(1.0, sw.z)] : [-1.5, 1.7]], () => useGame.getState().oldWomanArrives(), 1.3);
     }
     if (dwarfState === 'returning') {
@@ -285,19 +287,20 @@ export function CottageScene() {
       )}
       {!doorOpen && (
         <Html position={[-4.1, 2.9, DOOR_Z]} center style={{ pointerEvents: 'none' }}>
-          <div className="bubble">{tx(T('문을 눌러 봐! 🚪', 'Tap the door! 🚪'))}</div>
+          <div className="bubble">{tx(T('🚪 여기가 문이야!', '🚪 Here is the door!'))}</div>
         </Html>
       )}
       <Player world={world} />
       {dwarfs.map((d) => (
         <Npc key={d.node} object={d.obj} name={d.node} position={[DWARF_SPOTS[d.node][0], 0.2, DWARF_SPOTS[d.node][1]]}
           rotY={DWARF_SPOTS[d.node][2]} scale={DWARF_S} label={tx(d.name)} wander={dwarfState === 'home' ? 0.7 : 0} blocked={npcBlocked}
-          visible={dwarfState !== 'away' && (seek === 'done' || !HIDDEN.includes(d.node))} grounds={grounds} onClick={(n) => dwarfState === 'home' && talkTo(n, [DWARF_SPOTS[n][0], 0.2, DWARF_SPOTS[n][1]])} />
+          visible={dwarfState !== 'away' && (seek === 'done' || !HIDDEN.includes(d.node))} grounds={grounds} bubble={dwarfState === 'leaving' && !hasLine ? tx(T('⛏️ ♪ 하이호~', '⛏️ ♪ Heigh-ho~')) : null} onClick={(n) => dwarfState === 'home' && talkTo(n, [DWARF_SPOTS[n][0], 0.2, DWARF_SPOTS[n][1]])} />
       ))}
       <Npc object={snow} name="SnowWhiteHome" position={[-0.4, 0.2, 1.7]} rotY={Math.PI} scale={S * 1.02} wander={sleeping ? 0 : 0.6} blocked={npcBlocked} asleep={sleeping} grounds={grounds}
         onClick={(n) => talkTo(n, [-0.4, 0.2, 1.7])} />
-      <Npc object={oldWoman} name="OldWoman" position={[-6.8, 0, -1.8]} rotY={1.2} scale={S} visible={!queenGone && (dwarfState !== 'home' || apple !== 'hidden')} wander={0} blocked={npcBlocked} speed={0.5} grounds={grounds}
+      <Npc object={oldWoman} name="OldWoman" position={[-9.5, 0, DOOR_Z]} rotY={1.2} scale={S} visible={!queenGone && (dwarfState === 'away' || apple !== 'hidden')} wander={0} blocked={npcBlocked} speed={0.5} grounds={grounds}
         label={tx(T('할머니', 'Old woman'))} onClick={(n) => !queenGone && talkTo(n, [-6.2, 0, -1.6])} />
+      <Separation playerR={0.28} />
     </>
   );
 }

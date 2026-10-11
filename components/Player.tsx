@@ -23,6 +23,8 @@ export type World = {
   autoRun?: () => number | null;
   /** auto-run bumped into something (e.g. thorns) */
   onBump?: () => void;
+  /** run-game: which way to sidestep the obstacle ahead (-1 / +1, 0 = nothing there) — used when stuck */
+  steer?: (pos: THREE.Vector3) => number;
 };
 /** Recent player positions (with hop height) — Snow White follows this trail in the run-game escort. */
 export const trail: { x: number; z: number; y: number }[] = [];
@@ -100,6 +102,7 @@ export function Player({ world }: { world: World }) {
   const spawnKey = useGame((s) => s.spawnKey);
   const t0 = useRef(0);
   const stepT = useRef(0);
+  const stuck = useRef({ t: 0, dir: 0, hold: 0 }); // run-game: seconds blocked + auto-sidestep direction
 
   useEffect(() => {
     const [x, y, z] = world.spawn;
@@ -119,13 +122,19 @@ export function Player({ world }: { world: World }) {
     if (!kx && !kz && stick.active && Math.hypot(stick.x, stick.z) > 0.15) {
       kx = stick.x; kz = stick.z; analog = Math.max(0.35, Math.min(1, Math.hypot(kx, kz)));
     }
-    const locked = g.sleeping || g.lines.length > 0 || !!g.mini;
-    const run = !locked && world.autoRun ? world.autoRun() : null;
+    const locked = g.sleeping || g.lines.length > 0;
+    if (g.cutscene) { kx = 0; kz = 0; } // story cut-scene: only scripted walking
+    const run = !locked && !g.cutscene && world.autoRun ? world.autoRun() : null;
     if (runMode.on !== !!run) { runMode.on = !!run; useGame.setState({ running: runMode.on }); }
+    const air0 = player.jumpY > 0.001;
     if (run && kz < 0.5) {
       // run-game escort: keep walking up the path automatically; keys / stick / swipe steer left-right
       if (g.target) useGame.setState({ target: null, pending: null });
-      dx = Math.abs(kx) > 0.15 ? kx * 1.1 : 0; dz = -1; analog = run / world.speed;
+      dx = Math.abs(kx) > 0.15 ? kx * 1.1 : 0; dz = -1; analog = (run * (air0 ? 2.3 : 1)) / world.speed; // a hop carries you over
+      // stuck against a rock / thorn bush for a moment (little ones!) → sidestep around it automatically
+      const st = stuck.current;
+      if (st.hold > 0) { st.hold -= dt; if (!dx) dx = st.dir * 1.3; }
+      else if (st.t > 1.2 && !dx) { st.dir = world.steer?.(p) || (p.x > 0 ? -1 : 1); st.hold = 0.9; st.t = 0; dx = st.dir * 1.3; }
     } else if (run) { dx = 0; dz = 0; }
     else if (!locked && (kx || kz)) {
       if (g.sitting) g.standUp();
@@ -143,8 +152,9 @@ export function Player({ world }: { world: World }) {
     if (player.moving) {
       const step = Math.min(world.speed * analog * dt, len);
       const nx = p.x + (dx / len) * step, nz = p.z + (dz / len) * step;
-      if (!world.blocked(nx, nz)) { p.x = nx; p.z = nz; }
-      else if (run) { world.onBump?.(); if (!world.blocked(nx, p.z)) p.x = nx; }
+      const inside = world.blocked(p.x, p.z); // landed on / spawned inside something: always let them walk out
+      if (inside || !world.blocked(nx, nz)) { p.x = nx; p.z = nz; if (run) stuck.current.t = 0; }
+      else if (run) { world.onBump?.(); stuck.current.t += dt; if (!world.blocked(nx, p.z)) p.x = nx; }
       else if (!world.blocked(nx, p.z)) p.x = nx;
       else if (!world.blocked(p.x, nz)) p.z = nz;
       else if (g.target) useGame.setState({ target: null, pending: null });
@@ -159,7 +169,7 @@ export function Player({ world }: { world: World }) {
       stepT.current = 0.25;
       // during a conversation, turn to face whoever is talking
       const tk = g.lines.length && g.talker ? npcPos[g.talker] : null;
-      if (tk && !g.sitting && tk.distanceTo(p) < 5) {
+      if (tk && !g.sitting && tk.distanceTo(p) < 7.5) {
         let diff = Math.atan2(tk.x - p.x, tk.z - p.z) - player.rotY;
         diff = Math.atan2(Math.sin(diff), Math.cos(diff));
         player.rotY += diff * Math.min(1, dt * 6);
@@ -222,13 +232,67 @@ export function Player({ world }: { world: World }) {
 }
 
 /**
+ * Simple character collision: NPCs (and the player) never stand inside each other. Each NPC registers a
+ * body radius here; <Separation/> pushes overlapping pairs apart every frame (NPCs give way to the player,
+ * scripted walkers / sleepers don't get pushed, nothing is pushed into a wall or the table).
+ */
+type Body = { r: number; solid: boolean; fixed: boolean; blocked?: (x: number, z: number) => boolean };
+export const bodies: Record<string, Body> = {};
+/** true while <Separation/> tests a nudge (scenes skip their "keep away from the player" rule then) */
+export const sepCheck = { on: false };
+const _sep = new THREE.Vector3();
+export function Separation({ playerR }: { playerR: number }) {
+  useFrame(() => {
+    const g = useGame.getState();
+    const names = Object.keys(bodies).filter((n) => bodies[n].solid && npcPos[n]);
+    const push = (n: string, dx: number, dz: number) => {
+      const b = bodies[n]; const p = npcPos[n]; if (!b || b.fixed) return false;
+      const nx = p.x + dx, nz = p.z + dz;
+      sepCheck.on = true; const bad = !!b.blocked && b.blocked(nx, nz); sepCheck.on = false;
+      if (bad) return false;
+      p.x = nx; p.z = nz; return true;
+    };
+    for (let i = 0; i < names.length; i++) {
+      const a = names[i]; const pa = npcPos[a];
+      // player vs NPC: the NPC steps aside (the player is never shoved while steering / sitting)
+      if (!g.sitting) {
+        _sep.set(pa.x - player.pos.x, 0, pa.z - player.pos.z); const d = _sep.length(); const min = bodies[a].r + playerR;
+        if (d < min) {
+          if (d < 1e-4) _sep.set(1, 0, 0); else _sep.multiplyScalar(1 / d);
+          const k = (min - d) * 0.5;
+          if (!push(a, _sep.x * k, _sep.z * k) && bodies[a].fixed && !g.target) { /* immovable NPC: nudge the player instead */
+            player.pos.x -= _sep.x * k * 0.5; player.pos.z -= _sep.z * k * 0.5;
+          }
+        }
+      }
+      for (let j = i + 1; j < names.length; j++) {
+        const b = names[j]; const pb = npcPos[b];
+        _sep.set(pb.x - pa.x, 0, pb.z - pa.z); const d = _sep.length(); const min = bodies[a].r + bodies[b].r;
+        if (d >= min) continue;
+        if (d < 1e-4) _sep.set(1, 0, 0.3).normalize(); else _sep.multiplyScalar(1 / d);
+        const k = (min - d) * 0.5;
+        const fa = bodies[a].fixed, fb = bodies[b].fixed;
+        if (!fa && !fb) { push(a, -_sep.x * k, -_sep.z * k); push(b, _sep.x * k, _sep.z * k); }
+        else if (fa && !fb) push(b, _sep.x * k * 2, _sep.z * k * 2);
+        else if (!fa && fb) push(a, -_sep.x * k * 2, -_sep.z * k * 2);
+      }
+    }
+  });
+  return null;
+}
+
+/**
  * NPC: wanders a little around its home spot (procedural walk: waddle + bob + arm swing), stops and turns to
  * the player when they come close or while talking, click-to-talk.
  */
-export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, onClick, label, visible = true, grounds, wander = 0, blocked, speed = 0.7, asleep = false }: {
+export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, onClick, label, visible = true, grounds, wander = 0, blocked, speed = 0.7, asleep = false, bubble, children }: {
   object: THREE.Object3D; name: string; position: [number, number, number]; rotY?: number; scale?: number; face?: boolean;
   onClick?: (name: string) => void; label?: string; visible?: boolean; grounds?: React.MutableRefObject<THREE.Object3D[]>;
   wander?: number; blocked?: (x: number, z: number) => boolean; speed?: number; asleep?: boolean;
+  /** little speech bubble above the head (e.g. "♪ heigh-ho~" while the dwarfs march off) */
+  bubble?: string | null;
+  /** props held by the character (in model space, scaled with it) */
+  children?: React.ReactNode;
 }) {
   const ref = useRef<THREE.Group>(null!);
   const phase = useMemo(() => Math.random() * 6, []);
@@ -237,7 +301,7 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
   const hideTag = useGame((s) => s.lines.length > 0 && s.talker !== name); // only the speaker keeps a name tag during a chat
   const home = useMemo(() => new THREE.Vector3(...position), [position[0], position[1], position[2]]); // eslint-disable-line react-hooks/exhaustive-deps
   const w = useRef({ pos: home.clone(), target: null as THREE.Vector3 | null, wait: 1 + Math.random() * 3, walkT: 0 });
-  useEffect(() => { npcPos[name] = w.current.pos; return () => { if (npcPos[name] === w.current.pos) delete npcPos[name]; }; }, [name]);
+  useEffect(() => { npcPos[name] = w.current.pos; return () => { if (npcPos[name] === w.current.pos) delete npcPos[name]; delete bodies[name]; }; }, [name]);
   useFrame((st, dt) => {
     const g = ref.current;
     if (!g) return;
@@ -248,10 +312,10 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
     const speaking = gs.lines.length > 0 && gs.talker === name;
     const dPlayer = Math.hypot(player.pos.x - p.x, player.pos.z - p.z);
     const near = dPlayer < 1.9;
-    const stop = speaking || near || gs.lines.length > 0 || !!gs.mini || gs.sleeping;
+    const stop = speaking || near || gs.lines.length > 0 || gs.sleeping;
     let moving = false; let wantRot: number | null = null;
     const goal = npcGoal[name];
-    if (goal && !gs.mini) {
+    if (goal) {
       // scripted story walk (e.g. the old woman comes to the door, dwarfs head off to the mine)
       const wp = goal.path[goal.i ?? 0];
       const tx = wp === 'player' ? player.pos.x : wp[0], tz = wp === 'player' ? player.pos.z : wp[1];
@@ -287,6 +351,7 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
       }
     }
     if (moving) s.walkT += dt;
+    bodies[name] = { r: 0.32 * (scale / 0.68) * 1.0, solid: visible && !asleep, fixed: !!goal || asleep, blocked };
     g.position.x = p.x; g.position.z = p.z;
     g.visible = visible && !convoHidden.has(name); // a bystander blocking the conversation shot steps out of view
     g.position.y = grounds ? groundY(grounds.current, p.x, p.z, position[1]) : position[1];
@@ -315,7 +380,12 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
       onClick={(e) => { e.stopPropagation(); onClick?.(name); }}
       onPointerOver={() => (document.body.style.cursor = 'pointer')}
       onPointerOut={() => (document.body.style.cursor = '')}>
-      <group scale={scale}><primitive object={object} /></group>
+      <group scale={scale}><primitive object={object} />{children}</group>
+      {bubble && visible && (
+        <Html position={[0, 2.6 * scale, 0]} center style={{ pointerEvents: 'none' }}>
+          <div className="bubble cue">{bubble}</div>
+        </Html>
+      )}
       {asleep && (
         <Html position={[0, 1.4 * scale, 0]} center style={{ pointerEvents: 'none' }}>
           <div className="zzz">Zzz… ({taps}/5)</div>

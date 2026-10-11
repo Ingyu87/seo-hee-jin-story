@@ -1,35 +1,179 @@
 {
-  "_doc": "Put vibrato BEFORE rubberband (other order yields silence/NaN in ffmpeg). Every clip is loudness-normalised to -19 LUFS, then volume (e.g. -25%) is applied as a gain so soft voices stay softer. voice, rate, pitch (edge-tts prosody), volume, fx = ffmpeg post filter (rubberband pitch = timbre/age, aecho = room, vibrato = shaky). Lines ending in ! / ? / ... get extra lift/slowdown in gen-tts.mjs.",
+  "_doc": "Put vibrato BEFORE rubberband (other order yields silence/NaN in ffmpeg). Every clip is loudness-normalised to -19 LUFS, then volume (e.g. -25%) is applied as a gain so soft voices stay softer. voice, rate, pitch (edge-tts prosody), volume, fx = ffmpeg post filter (rubberband pitch = timbre/age, aecho = room, vibrato = shaky). Lines ending in ! / ? / ... get extra lift/slowdown in gen-tts.mjs. Korean: only the 3 native Korean neural voices (SunHi, InJoon, Hyunsu) — no accent; characters are separated by strong pitch / timbre (rubberband) / tempo.",
   "ko": {
-    "narrator": { "voice": "ko-KR-SunHiNeural", "rate": "-12%", "pitch": "-4Hz", "fx": "equalizer=f=180:t=q:w=1:g=3,equalizer=f=7000:t=q:w=1:g=-3,aecho=0.85:0.5:35:0.10" },
-    "seohui": { "voice": "en-US-AvaMultilingualNeural", "rate": "+12%", "pitch": "+28Hz", "fx": "rubberband=pitch=1.14,equalizer=f=3200:t=q:w=1:g=3" },
-    "seojin": { "voice": "en-US-EmmaMultilingualNeural", "rate": "-8%", "pitch": "+30Hz", "fx": "rubberband=pitch=1.28,equalizer=f=3500:t=q:w=1:g=3" },
-    "snow": { "voice": "fr-FR-VivienneMultilingualNeural", "rate": "+2%", "pitch": "+14Hz", "fx": "equalizer=f=3000:t=q:w=1:g=2,aecho=0.85:0.4:25:0.08" },
-    "queen": { "voice": "de-DE-SeraphinaMultilingualNeural", "rate": "-22%", "pitch": "-28Hz", "fx": "rubberband=pitch=0.93:formant=preserved,highpass=f=120,equalizer=f=2500:t=q:w=1:g=2,aecho=0.8:0.6:70|140:0.28|0.16" },
-    "oldwoman": { "voice": "pt-BR-ThalitaMultilingualNeural", "rate": "-26%", "pitch": "-22Hz", "fx": "vibrato=f=6.5:d=0.35,rubberband=pitch=0.95,lowpass=f=3800,equalizer=f=900:t=q:w=1:g=3" },
-    "mirror": { "voice": "ko-KR-InJoonNeural", "rate": "-30%", "pitch": "-40Hz", "fx": "rubberband=pitch=0.85:formant=preserved,aecho=0.8:0.8:45|90|180:0.5|0.35|0.22,equalizer=f=150:t=q:w=1:g=3" },
-    "Doc": { "voice": "ko-KR-HyunsuMultilingualNeural", "rate": "-8%", "pitch": "-6Hz", "fx": "rubberband=pitch=1.06,equalizer=f=250:t=q:w=1:g=2" },
-    "Grumpy": { "voice": "de-DE-FlorianMultilingualNeural", "rate": "-2%", "pitch": "-30Hz", "fx": "rubberband=pitch=0.9:formant=preserved,lowpass=f=3200,equalizer=f=200:t=q:w=1:g=4" },
-    "Happy": { "voice": "en-US-AndrewMultilingualNeural", "rate": "+20%", "pitch": "+30Hz", "fx": "rubberband=pitch=1.08,equalizer=f=3500:t=q:w=1:g=3" },
-    "Sleepy": { "voice": "en-US-BrianMultilingualNeural", "rate": "-38%", "pitch": "-26Hz", "volume": "-15%", "fx": "lowpass=f=3000,tremolo=f=1.2:d=0.25" },
-    "Bashful": { "voice": "fr-FR-RemyMultilingualNeural", "rate": "-14%", "pitch": "+22Hz", "volume": "-25%", "fx": "rubberband=pitch=1.06,lowpass=f=4500" },
-    "Sneezy": { "voice": "it-IT-GiuseppeMultilingualNeural", "rate": "+10%", "pitch": "+10Hz", "fx": "highpass=f=350,equalizer=f=1100:t=q:w=0.8:g=9" },
-    "Dopey": { "voice": "en-AU-WilliamMultilingualNeural", "rate": "+14%", "pitch": "+40Hz", "fx": "vibrato=f=4:d=0.12,rubberband=pitch=1.18" }
+    "narrator": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "-10%",
+      "pitch": "-2Hz",
+      "fx": "equalizer=f=180:t=q:w=1:g=3,equalizer=f=7000:t=q:w=1:g=-3,aecho=0.85:0.5:35:0.10"
+    },
+    "seohui": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "+10%",
+      "pitch": "+30Hz",
+      "fx": "rubberband=pitch=1.2,equalizer=f=3200:t=q:w=1:g=3"
+    },
+    "seojin": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "-6%",
+      "pitch": "+42Hz",
+      "fx": "rubberband=pitch=1.34,equalizer=f=3500:t=q:w=1:g=3"
+    },
+    "snow": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "+0%",
+      "pitch": "+16Hz",
+      "fx": "rubberband=pitch=1.07:formant=preserved,equalizer=f=3000:t=q:w=1:g=2,aecho=0.85:0.4:25:0.08"
+    },
+    "queen": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "-20%",
+      "pitch": "-30Hz",
+      "fx": "rubberband=pitch=0.86,highpass=f=110,equalizer=f=2500:t=q:w=1:g=2,aecho=0.8:0.6:70|140:0.28|0.16"
+    },
+    "oldwoman": {
+      "voice": "ko-KR-SunHiNeural",
+      "rate": "-24%",
+      "pitch": "-20Hz",
+      "fx": "vibrato=f=6.5:d=0.35,rubberband=pitch=0.9,lowpass=f=3600,equalizer=f=900:t=q:w=1:g=3"
+    },
+    "mirror": {
+      "voice": "ko-KR-InJoonNeural",
+      "rate": "-30%",
+      "pitch": "-40Hz",
+      "fx": "rubberband=pitch=0.85:formant=preserved,aecho=0.8:0.8:45|90|180:0.5|0.35|0.22,equalizer=f=150:t=q:w=1:g=3"
+    },
+    "Doc": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "-6%",
+      "pitch": "-4Hz",
+      "fx": "rubberband=pitch=1.08,equalizer=f=250:t=q:w=1:g=2"
+    },
+    "Grumpy": {
+      "voice": "ko-KR-InJoonNeural",
+      "rate": "-2%",
+      "pitch": "-26Hz",
+      "fx": "rubberband=pitch=0.92:formant=preserved,lowpass=f=3200,equalizer=f=200:t=q:w=1:g=4"
+    },
+    "Happy": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "+18%",
+      "pitch": "+30Hz",
+      "fx": "rubberband=pitch=1.16,equalizer=f=3500:t=q:w=1:g=3"
+    },
+    "Sleepy": {
+      "voice": "ko-KR-InJoonNeural",
+      "rate": "-36%",
+      "pitch": "-20Hz",
+      "volume": "-15%",
+      "fx": "lowpass=f=3000,tremolo=f=1.2:d=0.25"
+    },
+    "Bashful": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "-14%",
+      "pitch": "+20Hz",
+      "volume": "-25%",
+      "fx": "rubberband=pitch=1.12,lowpass=f=4500"
+    },
+    "Sneezy": {
+      "voice": "ko-KR-InJoonNeural",
+      "rate": "+10%",
+      "pitch": "+14Hz",
+      "fx": "rubberband=pitch=1.1,highpass=f=350,equalizer=f=1100:t=q:w=0.8:g=9"
+    },
+    "Dopey": {
+      "voice": "ko-KR-HyunsuMultilingualNeural",
+      "rate": "+14%",
+      "pitch": "+40Hz",
+      "fx": "vibrato=f=4:d=0.12,rubberband=pitch=1.25"
+    }
   },
   "en": {
-    "narrator": { "voice": "en-US-JennyNeural", "rate": "-12%", "pitch": "-4Hz", "fx": "equalizer=f=180:t=q:w=1:g=3,equalizer=f=7000:t=q:w=1:g=-3,aecho=0.85:0.5:35:0.10" },
-    "seohui": { "voice": "en-US-EmmaNeural", "rate": "+12%", "pitch": "+28Hz", "fx": "rubberband=pitch=1.14,equalizer=f=3200:t=q:w=1:g=3" },
-    "seojin": { "voice": "en-US-AnaNeural", "rate": "-8%", "pitch": "+14Hz", "fx": "rubberband=pitch=1.12,equalizer=f=3500:t=q:w=1:g=3" },
-    "snow": { "voice": "en-US-AvaNeural", "rate": "+2%", "pitch": "+14Hz", "fx": "equalizer=f=3000:t=q:w=1:g=2,aecho=0.85:0.4:25:0.08" },
-    "queen": { "voice": "en-US-MichelleNeural", "rate": "-22%", "pitch": "-28Hz", "fx": "rubberband=pitch=0.93:formant=preserved,highpass=f=120,equalizer=f=2500:t=q:w=1:g=2,aecho=0.8:0.6:70|140:0.28|0.16" },
-    "oldwoman": { "voice": "en-US-AriaNeural", "rate": "-26%", "pitch": "-22Hz", "fx": "vibrato=f=6.5:d=0.35,rubberband=pitch=0.95,lowpass=f=3800,equalizer=f=900:t=q:w=1:g=3" },
-    "mirror": { "voice": "en-US-ChristopherNeural", "rate": "-30%", "pitch": "-40Hz", "fx": "rubberband=pitch=0.85:formant=preserved,aecho=0.8:0.8:45|90|180:0.5|0.35|0.22,equalizer=f=150:t=q:w=1:g=3" },
-    "Doc": { "voice": "en-US-GuyNeural", "rate": "-8%", "pitch": "-6Hz", "fx": "rubberband=pitch=1.06,equalizer=f=250:t=q:w=1:g=2" },
-    "Grumpy": { "voice": "en-US-EricNeural", "rate": "-2%", "pitch": "-30Hz", "fx": "rubberband=pitch=0.9:formant=preserved,lowpass=f=3200,equalizer=f=200:t=q:w=1:g=4" },
-    "Happy": { "voice": "en-US-RogerNeural", "rate": "+20%", "pitch": "+30Hz", "fx": "rubberband=pitch=1.08,equalizer=f=3500:t=q:w=1:g=3" },
-    "Sleepy": { "voice": "en-US-SteffanNeural", "rate": "-38%", "pitch": "-26Hz", "volume": "-15%", "fx": "lowpass=f=3000,tremolo=f=1.2:d=0.25" },
-    "Bashful": { "voice": "en-US-BrianNeural", "rate": "-14%", "pitch": "+22Hz", "volume": "-25%", "fx": "rubberband=pitch=1.06,lowpass=f=4500" },
-    "Sneezy": { "voice": "en-US-AndrewNeural", "rate": "+10%", "pitch": "+10Hz", "fx": "highpass=f=350,equalizer=f=1100:t=q:w=0.8:g=9" },
-    "Dopey": { "voice": "en-AU-WilliamMultilingualNeural", "rate": "+14%", "pitch": "+40Hz", "fx": "vibrato=f=4:d=0.12,rubberband=pitch=1.18" }
+    "narrator": {
+      "voice": "en-US-JennyNeural",
+      "rate": "-12%",
+      "pitch": "-4Hz",
+      "fx": "equalizer=f=180:t=q:w=1:g=3,equalizer=f=7000:t=q:w=1:g=-3,aecho=0.85:0.5:35:0.10"
+    },
+    "seohui": {
+      "voice": "en-US-EmmaNeural",
+      "rate": "+12%",
+      "pitch": "+28Hz",
+      "fx": "rubberband=pitch=1.14,equalizer=f=3200:t=q:w=1:g=3"
+    },
+    "seojin": {
+      "voice": "en-US-AnaNeural",
+      "rate": "-8%",
+      "pitch": "+14Hz",
+      "fx": "rubberband=pitch=1.12,equalizer=f=3500:t=q:w=1:g=3"
+    },
+    "snow": {
+      "voice": "en-US-AvaNeural",
+      "rate": "+2%",
+      "pitch": "+14Hz",
+      "fx": "equalizer=f=3000:t=q:w=1:g=2,aecho=0.85:0.4:25:0.08"
+    },
+    "queen": {
+      "voice": "en-US-MichelleNeural",
+      "rate": "-22%",
+      "pitch": "-28Hz",
+      "fx": "rubberband=pitch=0.93:formant=preserved,highpass=f=120,equalizer=f=2500:t=q:w=1:g=2,aecho=0.8:0.6:70|140:0.28|0.16"
+    },
+    "oldwoman": {
+      "voice": "en-US-AriaNeural",
+      "rate": "-26%",
+      "pitch": "-22Hz",
+      "fx": "vibrato=f=6.5:d=0.35,rubberband=pitch=0.95,lowpass=f=3800,equalizer=f=900:t=q:w=1:g=3"
+    },
+    "mirror": {
+      "voice": "en-US-ChristopherNeural",
+      "rate": "-30%",
+      "pitch": "-40Hz",
+      "fx": "rubberband=pitch=0.85:formant=preserved,aecho=0.8:0.8:45|90|180:0.5|0.35|0.22,equalizer=f=150:t=q:w=1:g=3"
+    },
+    "Doc": {
+      "voice": "en-US-GuyNeural",
+      "rate": "-8%",
+      "pitch": "-6Hz",
+      "fx": "rubberband=pitch=1.06,equalizer=f=250:t=q:w=1:g=2"
+    },
+    "Grumpy": {
+      "voice": "en-US-EricNeural",
+      "rate": "-2%",
+      "pitch": "-30Hz",
+      "fx": "rubberband=pitch=0.9:formant=preserved,lowpass=f=3200,equalizer=f=200:t=q:w=1:g=4"
+    },
+    "Happy": {
+      "voice": "en-US-RogerNeural",
+      "rate": "+20%",
+      "pitch": "+30Hz",
+      "fx": "rubberband=pitch=1.08,equalizer=f=3500:t=q:w=1:g=3"
+    },
+    "Sleepy": {
+      "voice": "en-US-SteffanNeural",
+      "rate": "-38%",
+      "pitch": "-26Hz",
+      "volume": "-15%",
+      "fx": "lowpass=f=3000,tremolo=f=1.2:d=0.25"
+    },
+    "Bashful": {
+      "voice": "en-US-BrianNeural",
+      "rate": "-14%",
+      "pitch": "+22Hz",
+      "volume": "-25%",
+      "fx": "rubberband=pitch=1.06,lowpass=f=4500"
+    },
+    "Sneezy": {
+      "voice": "en-US-AndrewNeural",
+      "rate": "+10%",
+      "pitch": "+10Hz",
+      "fx": "highpass=f=350,equalizer=f=1100:t=q:w=0.8:g=9"
+    },
+    "Dopey": {
+      "voice": "en-AU-WilliamMultilingualNeural",
+      "rate": "+14%",
+      "pitch": "+40Hz",
+      "fx": "vibrato=f=4:d=0.12,rubberband=pitch=1.18"
+    }
   }
 }

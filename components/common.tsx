@@ -44,7 +44,7 @@ if (typeof window !== 'undefined') {
   const onView = (t: EventTarget | null) => {
     const el = t as HTMLElement | null;
     if (!el?.closest) return false;
-    if (el.closest('button, .dialog, .joy, .mini-wrap, .guide, .book, .toolbar, .topbar')) return false;
+    if (el.closest('button, .dialog, .joy, .guide, .toolbar, .topbar')) return false;
     return !!el.closest('.game');
   };
   window.addEventListener('wheel', (e) => {
@@ -178,23 +178,34 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
         // perpendicular to player→NPC (both seen side-on / 3/4, never one behind the other); dollhouse cottage
         // stays in front of the cut-away wall with only a slight turn
         // perpendicular to player→NPC (both seen side-on / 3/4, never one behind the other)
-        const hdir = side.clone().addScaledVector(backXZ, 0.15).normalize(); // clean side two-shot: both side by side
-        if (room) { // dollhouse: look in through the open front — a 3/4 two-shot, faces towards the camera
-          hdir.copy(side).multiplyScalar(portrait ? 0.4 : 0.55).add(new THREE.Vector3(0, 0, 1)).normalize();
-        }
         const cam = camera as THREE.PerspectiveCamera;
         const aspect = typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 1.6;
         const vHalf = THREE.MathUtils.degToRad((cam.fov ?? 42) / 2);
         const hHalf = Math.atan(Math.tan(vHalf) * aspect);
+        const margin = portrait ? 0.75 : 0.9;
+        let hdir = side.clone().addScaledVector(backXZ, 0.15).normalize(); // clean side two-shot: both side by side
+        if (!room) {
+          // far apart (e.g. the Queen up the path) on a narrow phone screen: swing round behind the player
+          // (over-the-shoulder) until both fit without the camera flying miles away
+          for (const w of [0, 0.3, 0.5, 0.65, 0.78, 0.88]) {
+            const h = side.clone().multiplyScalar(1 - w).addScaledVector(axis, -w).addScaledVector(backXZ, 0.15).normalize();
+            const ss = sep * Math.sqrt(Math.max(0.15, 1 - Math.pow(h.dot(axis), 2)));
+            hdir = h;
+            if (((ss / 2 + margin) / Math.tan(hHalf)) * camZoom.v <= 10.5) break;
+          }
+        }
+        if (room) { // dollhouse: look in through the open front — a 3/4 two-shot, faces towards the camera
+          hdir.copy(side).multiplyScalar(portrait ? 0.4 : 0.55).add(new THREE.Vector3(0, 0, 1)).normalize();
+        }
         // apparent (screen-plane) separation of the two characters from this angle
         const screenSep = sep * Math.sqrt(Math.max(0.15, 1 - Math.pow(hdir.dot(axis), 2)));
-        const margin = portrait ? 0.75 : 0.9;
         const fitW = (screenSep / 2 + margin) / Math.tan(hHalf);  // both bodies + a small margin across the screen
         // FULL BODY two-shot: head-to-toe above the dialogue box (~bottom 32% on phones)
-        const fitH = (charH * 1.35) / ((portrait ? 0.95 : 1.15) * Math.tan(vHalf));
-        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH) * camZoom.v, Math.max(7, charH * 4.2), 18);
+        const fitH = (charH * 1.2) / ((portrait ? 0.95 : 1.15) * Math.tan(vHalf));
+        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH) * camZoom.v, charH * 3.4, 18);
         const el = THREE.MathUtils.degToRad(portrait ? 18 : 14);
-        c.look.copy(mid); c.look.y += charH * 0.45; // aim mid-torso so whole bodies stay in frame
+        // aim BELOW the pair so both full bodies sit in the upper part of the screen, clear of the dialogue box
+        c.look.copy(mid); c.look.y += charH * 0.5 - (portrait ? 0.16 : 0.12) * dist * Math.tan(vHalf);
         c.pos.copy(c.look).addScaledVector(hdir, dist * Math.cos(el)); c.pos.y += dist * Math.sin(el);
         if (room) { // keep the lens out of the walls / roof: in front of the open side, between the side walls
           c.pos.x = THREE.MathUtils.clamp(c.pos.x, room.x[0], room.x[1]);
@@ -209,7 +220,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
       for (const [name, v] of Object.entries(npcPos)) {
         if (name === g.talker) continue;
         // story characters stay in shot for their scenes (old woman always; Snow White once the apple arrives)
-        if (!DWARF_NODES.has(name) && (name !== 'SnowWhiteHome' || g.apple !== 'hidden' || g.sleeping)) continue;
+        if (!DWARF_NODES.has(name) && (name !== 'SnowWhiteHome' || g.apple === 'table' || g.apple === 'held' || g.sleeping)) continue;
         for (const t of [player.pos, npc]) {
           const seg = _tgt.copy(t).sub(camera.position).setY(0); const l2 = seg.lengthSq(); if (l2 < 0.01) continue;
           const rx = v.x - camera.position.x, rz = v.z - camera.position.z;

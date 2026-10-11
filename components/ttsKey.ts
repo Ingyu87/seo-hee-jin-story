@@ -1,9 +1,9 @@
 /**
  * Shared by the browser (components/speech.ts) and the build-time generator (scripts/gen-tts.mjs):
- * how a spoken line is cleaned and turned into the file name of its pre-generated voice clip.
+ * how a spoken line is cleaned (stage directions in parentheses are never read aloud) and turned into the file name of its pre-generated voice clip.
  */
 export function cleanLine(text: string) {
-  return text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{FE0F}]/gu, '').replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim();
+  return text.replace(/\([^)]*\)/g, ' ').replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{FE0F}]/gu, '').replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim();
 }
 /** FNV-1a (32-bit, two seeds) → 16 hex chars. */
 export function ttsKey(who: string, lang: string, text: string) {
