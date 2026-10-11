@@ -358,7 +358,7 @@ export function Hud() {
           <span className="who" style={{ background: h.color }}>{tx(h.name)} · {tx(UI.age(h.age))}</span>
           <span className="place">{tx(s.scene === 'forest' ? UI.forest : UI.cottage)}</span>
           {s.scene === 'forest' && s.seek === 'on' && <span className="seek">🔍 {s.found.length}/{HIDDEN.length}</span>}
-          <button className="ghost" onClick={() => { sfx('click'); s.home(); }}>{tx(UI.home)}</button>
+          {!line && !s.mini && !s.running && <button className="ghost" onClick={() => { if (s.metSnowWhite && !window.confirm(tx(T('처음부터 다시 할까?', 'Start over from the beginning?')))) return; sfx('click'); s.home(); }}>{tx(UI.home)}</button>}
         </div>
         {s.running && !line && !s.mini ? <RunHud /> : <StoryGoal />}
         {s.hint && !line && !s.mini && !s.running && <div className="hint" key={s.hint.ko}>{tx(s.hint)}</div>}

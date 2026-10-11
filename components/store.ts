@@ -409,14 +409,14 @@ export const useGame = create<State>((set, get) => ({
     set({ talker: name });
     const told = beat(name, s.beats);
     const advance = () => set({ beats: { ...get().beats, [name]: (get().beats[name] ?? 0) + 1 } });
-    if (name === 'SnowWhite' && s.metSnowWhite && told) {
-      advance();
-      s.say(s.swFollow ? told : [...told, { speaker: SPK.snow, text: T('저 끝 오두막까지 같이 가 줄래?', 'Will you walk with me to the cottage at the end of the path?'),
-        choices: [{ id: 'sw-go', label: T('같이 가자!', "Let's go!") }, { id: 'sw-flower', label: T('꽃 따서 주기 🌸 (미니게임)', 'Pick flowers for her 🌸 (mini-game)') }] }]);
-      return;
-    }
     if (name === 'SnowWhiteHome' && told) { advance(); s.say(told); return; }
     if (name === 'SnowWhite') {
+      // First meeting once; later talks only advance story beats — never restart the intro.
+      if (s.metSnowWhite) {
+        if (told) { advance(); s.say(s.swFollow ? told : [...told, { speaker: SPK.snow, text: T('저 끝 오두막까지 같이 가 줄래?', 'Will you walk with me to the cottage at the end of the path?'),
+          choices: [{ id: 'sw-go', label: T('같이 가자!', "Let's go!") }, { id: 'sw-flower', label: T('꽃 따서 주기 🌸 (미니게임)', 'Pick flowers for her 🌸 (mini-game)') }] }]); }
+        return;
+      }
       set({ metSnowWhite: true });
       s.say([
         { speaker: SPK.snow, text: T('안녕! 나는 백설공주야. 너는 누구니?', "Hi! I'm Snow White. Who are you?") },
