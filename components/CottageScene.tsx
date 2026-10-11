@@ -147,6 +147,21 @@ export function CottageScene() {
   useAct('SnowWhiteHome', { icon: '💬', label: T('백설공주와 이야기하기', 'Talk to Snow White'), r: 1.4, pos: () => (npcPos.SnowWhiteHome ? [npcPos.SnowWhiteHome.x, npcPos.SnowWhiteHome.z] : [-0.4, 1.7]), run: () => useGame.getState().interact('SnowWhiteHome') });
   useAct('OldWoman', { icon: '💬', label: T('할머니와 이야기하기', 'Talk to the old woman'), r: 1.8, pos: () => (useGame.getState().queenGone || (useGame.getState().dwarfs === 'home' && useGame.getState().apple === 'hidden') ? null : npcPos.OldWoman ? [npcPos.OldWoman.x, npcPos.OldWoman.z] : [-6.2, -1.6]), run: () => useGame.getState().interact('OldWoman') });
 
+  // conversation staging: if the NPC you talk to stands in front of / behind you (as seen from the dollhouse
+  // camera), step beside them so the two-shot shows both faces side by side instead of one hiding the other
+  useFrame(() => {
+    const g = useGame.getState();
+    const n = g.lines.length && g.talker ? npcPos[g.talker] : null;
+    if (!n || g.sitting || g.sleeping) return;
+    const p = player.pos;
+    if (Math.hypot(n.x - p.x, n.z - p.z) > 2.4 || (Math.abs(n.x - p.x) > 0.85 && Math.abs(n.z - p.z) < 0.45)) return; // already side by side
+    const sx = p.x >= n.x ? 1 : -1;
+    let tx = n.x + sx * 0.95;
+    if (blocked(tx, n.z)) tx = n.x - sx * 0.95;
+    if (blocked(tx, n.z)) return;
+    p.x += (tx - p.x) * 0.15; p.z += (n.z - p.z) * 0.15;
+  });
+
   // ---- story director: dwarfs leave for the mine → the disguised Queen comes to Snow White → dwarfs come home
   const welcomeAt = useRef<number | null>(null);
   useFrame((st) => {

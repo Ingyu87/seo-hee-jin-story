@@ -200,6 +200,7 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
   const phase = useMemo(() => Math.random() * 6, []);
   const arms = useMemo(() => rigArms(object), [object]);
   const taps = useGame((s) => (asleep ? s.taps : 0));
+  const hideTag = useGame((s) => s.lines.length > 0 && s.talker !== name); // only the speaker keeps a name tag during a chat
   const home = useMemo(() => new THREE.Vector3(...position), [position[0], position[1], position[2]]); // eslint-disable-line react-hooks/exhaustive-deps
   const w = useRef({ pos: home.clone(), target: null as THREE.Vector3 | null, wait: 1 + Math.random() * 3, walkT: 0 });
   useEffect(() => { npcPos[name] = w.current.pos; return () => { if (npcPos[name] === w.current.pos) delete npcPos[name]; }; }, [name]);
@@ -285,7 +286,7 @@ export function Npc({ object, name, position, rotY = 0, scale = 1, face = true, 
           <div className="zzz">Zzz… ({taps}/5)</div>
         </Html>
       )}
-      {label && (
+      {label && visible && !hideTag && (
         <Html position={[0, 2.95 * scale, 0]} center distanceFactor={9} style={{ pointerEvents: 'none' }}>
           <div className="nametag">{label}</div>
         </Html>

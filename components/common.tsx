@@ -158,10 +158,10 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room }: {
         const vHalf = THREE.MathUtils.degToRad((cam.fov ?? 42) / 2);
         const hHalf = Math.atan(Math.tan(vHalf) * aspect);
         const fitW = (sep / 2 + 1.0) / Math.tan(hHalf);   // both full bodies + a margin across the screen
-        const fitH = 1.6 / Math.tan(vHalf);               // head-to-toe vertically (with room for the dialogue box)
-        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH), 4, 14);
+        const fitH = 2.4 / Math.tan(vHalf);               // head-to-toe vertically (with room for the dialogue box)
+        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH), 4, 22);
         const el = THREE.MathUtils.degToRad(portrait ? 22 : 16);
-        c.look.copy(mid); c.look.y += portrait ? 0.15 : 0.7; // aim low so faces sit above the dialogue box on phones
+        c.look.copy(mid); c.look.y += portrait ? 0.15 : 0.75; // aim low so faces sit above the dialogue box on phones
         c.pos.copy(c.look).addScaledVector(hdir, dist * Math.cos(el)); c.pos.y += dist * Math.sin(el);
         if (room) { // keep the lens out of the walls / roof: in front of the open side, between the side walls
           c.pos.x = THREE.MathUtils.clamp(c.pos.x, room.x[0], room.x[1]);

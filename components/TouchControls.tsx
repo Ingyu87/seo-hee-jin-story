@@ -93,7 +93,7 @@ function ActionButtons() {
   useEffect(() => {
     if (localStorage.getItem('shj-tip-act')) return;
     setTip(true);
-    const t = setTimeout(() => setTip(false), 9000);
+    const t = setTimeout(() => setTip(false), 15000);
     return () => clearTimeout(t);
   }, []);
   const doneTip = () => { setTip(false); try { localStorage.setItem('shj-tip-act', '1'); } catch {} };

@@ -184,7 +184,7 @@ export function ForestScene() {
       if (!g.talked['q1'] && g.metSnowWhite && p.z < -13 && !g.lines.length && !g.mini) {
         useGame.setState({ talked: { ...g.talked, q1: true }, target: null, pending: null });
         // she stops a few steps up the path talking to her mirror — the player overhears her (doesn't walk into you)
-        const z1 = p.z - 4.2; walkNpc('Queen', [[pathX(z1) - 1.6, z1]], queenTalks, 2.2);
+        const z1 = p.z - 3.4; walkNpc('Queen', [[pathX(z1) - 1.6, z1]], queenTalks, 2.2);
         const h = HEROES[g.hero];
         g.say([{ speaker: h.name, text: T('앗, 저기 무서운 왕비가 온다! 쉿… 나무 뒤에 숨어서 들어 보자!', "Oh! The wicked Queen is coming! Shh… let's hide behind a tree and listen!") }]);
       }
@@ -192,7 +192,7 @@ export function ForestScene() {
       if (!g.talked['q2'] && g.talked['q1'] && g.swFollow && p.z < -24 && !g.lines.length && !g.mini) {
         useGame.setState({ talked: { ...g.talked, q2: true }, target: null, pending: null });
         const q = npcPos.Queen; if (q && q.distanceTo(p) > 9) q.set(p.x - 2.6, q.y, p.z - 3);
-        const z2 = p.z - 4.2; walkNpc('Queen', [[pathX(z2) - 1.6, z2]], queenTalks, 2.4);
+        const z2 = p.z - 3.4; walkNpc('Queen', [[pathX(z2) - 1.6, z2]], queenTalks, 2.4);
       }
       // (wait until the Queen has finished her poison-apple scene so it can't be skipped by walking past)
       if (!fired.current.gate && g.swFollow && p.z < -31 && !npcGoal.Queen && !g.lines.length && (!g.talked['q2'] || g.talked['qGone'])) {
