@@ -110,10 +110,24 @@ if (DRY) { for (const [k, v] of items) console.log(k, v.who, v.lang, v.text); pr
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tts-'));
 let made = 0, failed = 0;
-const jobs = keys.filter((k) => !fs.existsSync(path.join(OUT, k + '.mp3')));
+// a changed cast entry invalidates that speaker's clips
+let oldCast = {}; try { oldCast = JSON.parse(fs.readFileSync(path.join(OUT, 'manifest.json'), 'utf8')).cast || {}; } catch {}
+const castChanged = (lang, who) => JSON.stringify((oldCast[lang] || {})[who]) !== JSON.stringify((CAST[lang] || {})[who] || CAST[lang].narrator);
+const jobs = keys.filter((k) => !fs.existsSync(path.join(OUT, k + '.mp3')) || process.argv.includes('--force') || castChanged(items.get(k).lang, items.get(k).who));
 async function one(k) {
   const { who, lang, text } = items.get(k);
-  const [voice, rate, pitch] = CAST[lang][who] || CAST[lang].narrator;
+  const c = CAST[lang][who] || CAST[lang].narrator;
+  const { voice, fx } = c;
+  // per-line expression: exclamations lift + speed up, questions lift, trailing "..." slows down
+  const t = text.trim();
+  let dr = 0, dp = 0;
+  if (/[!！]+[^\w가-힣]*$/.test(t)) { dr += 6; dp += 10; }
+  else if (/[?？]+[^\w가-힣]*$/.test(t)) { dp += 6; }
+  if (/(\.\.\.|…)[^\w가-힣]*$/.test(t)) { dr -= 8; dp -= 4; }
+  const pct = (v) => (v >= 0 ? '+' : '') + v;
+  const rate = pct(parseInt(c.rate, 10) + dr) + '%';
+  const pitch = pct(parseInt(c.pitch, 10) + dp) + 'Hz';
+  const volume = c.volume || '+0%';
   const raw = path.join(tmp, k + '.raw.mp3');
   const spoken = text.replace(/[()]/g, ', ').replace(/~/g, '');
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -122,7 +136,7 @@ async function one(k) {
         import('node:child_process').then(({ execFile }) => execFile(EDGE, ['-v', voice, `--rate=${rate}`, `--pitch=${pitch}`, '-t', spoken, '--write-media', raw], { timeout: 60000 }, (e) => (e ? rej(e) : res())));
       });
       // 32 kbps mono keeps the whole cast small enough for the free Vercel tier
-      execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-ac', '1', '-ar', '24000', '-b:a', '32k', path.join(OUT, k + '.mp3')]);
+      execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', raw, '-af', [fx, 'loudnorm=I=-19:TP=-1.5:LRA=11', `volume=${(1 + parseInt(volume, 10) / 100).toFixed(2)}`, 'alimiter=limit=0.95'].filter(Boolean).join(','), '-ac', '1', '-ar', '24000', '-b:a', '32k', path.join(OUT, k + '.mp3')]);
       made++; return;
     } catch (e) { await new Promise((r) => setTimeout(r, 1500 * (attempt + 1))); }
   }
