@@ -292,3 +292,4 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
 /* single zoom pair, tucked at the right edge under the goal pill so it doesn't cover the two-shot */
 .zoombtns, .hud > .zoombtns, .touchpad .zoombtns { top: max(150px, calc(env(safe-area-inset-top) + 140px)); right: max(8px, env(safe-area-inset-right)); gap: 6px; z-index: 20; }
 .zoombtns button { width: 42px; height: 42px; font-size: 24px; }
+.runskip { right: auto; left: max(12px, env(safe-area-inset-left)); }
