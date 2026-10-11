@@ -121,7 +121,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
   const lookAt = useRef(new THREE.Vector3());
   const first = useRef(true);
   const fade = useOccluderFade(occluders);
-  const convo = useRef<{ lines: unknown; talker: string | null; sign: number; pPos: THREE.Vector3 | null; nPos: THREE.Vector3 | null; pos: THREE.Vector3; look: THREE.Vector3 }>(
+  const convo = useRef<{ zoom?: number; lines: unknown; talker: string | null; sign: number; pPos: THREE.Vector3 | null; nPos: THREE.Vector3 | null; pos: THREE.Vector3; look: THREE.Vector3 }>(
     { lines: null, talker: null, sign: 1, pPos: null, nPos: null, pos: new THREE.Vector3(), look: new THREE.Vector3() });
   useFrame(() => {
     let pos: THREE.Vector3, lk: THREE.Vector3;
@@ -140,13 +140,20 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
       // and only re-framed if someone actually walks somewhere (e.g. the old woman coming in).
       const c = convo.current;
       const moved = !c.pPos || c.pPos.distanceTo(player.pos) > 0.8 || c.nPos!.distanceTo(npc) > 0.8;
-      if (c.lines !== g.lines || c.talker !== g.talker || moved) {
+      const zoomed = c.zoom !== camZoom.v; c.zoom = camZoom.v; // +/- or pinch during a chat re-frames the shot
+      if (c.lines !== g.lines || c.talker !== g.talker || moved || zoomed) {
         const fresh = c.lines !== g.lines || c.talker !== g.talker;
+        const fresh0 = fresh && c.talker !== g.talker;
         c.lines = g.lines; c.talker = g.talker; c.pPos = player.pos.clone(); c.nPos = npc.clone();
         const mid = _mid.copy(player.pos).add(npc).multiplyScalar(0.5);
         const portrait = typeof window !== 'undefined' && window.innerWidth < window.innerHeight;
         const axis = _dir.set(npc.x - player.pos.x, 0, npc.z - player.pos.z);
-        const sep = Math.max(0.6, axis.length()); axis.normalize();
+        let sep = Math.max(0.6, axis.length()); axis.normalize();
+        if (fresh0 && !room && sep < 1.5 && axis.lengthSq() > 0.5) {
+          // too close together (one would hide the other): the other character takes a step back
+          npc.addScaledVector(axis, 1.5 - sep); sep = 1.5;
+          mid.copy(player.pos).add(npc).multiplyScalar(0.5);
+        }
         const backXZ = _up.copy(pos).sub(lk).setY(0).normalize();
         const side = new THREE.Vector3(-axis.z, 0, axis.x);
         if (side.dot(backXZ) < 0) side.negate();
@@ -171,13 +178,7 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
         // perpendicular to player→NPC (both seen side-on / 3/4, never one behind the other); dollhouse cottage
         // stays in front of the cut-away wall with only a slight turn
         // perpendicular to player→NPC (both seen side-on / 3/4, never one behind the other)
-        const hdir = side.clone().addScaledVector(backXZ, 0.15).normalize();
-        if (portrait) {
-          // tall phone screen: turn the lens ~30° toward the pair's axis (from the usual camera side) so the two
-          // stand closer together on screen and the shot can come in much tighter — still both faces visible
-          const ax = axis.clone(); if (ax.dot(backXZ) < 0) ax.negate();
-          hdir.addScaledVector(ax, 0.55).normalize();
-        }
+        const hdir = side.clone().addScaledVector(backXZ, 0.15).normalize(); // clean side two-shot: both side by side
         if (room) { // dollhouse: look in through the open front — a 3/4 two-shot, faces towards the camera
           hdir.copy(side).multiplyScalar(portrait ? 0.4 : 0.55).add(new THREE.Vector3(0, 0, 1)).normalize();
         }
@@ -187,13 +188,13 @@ export function FollowCam({ offset, look, lerp = 0.08, fixed, room, charH = 1.6,
         const hHalf = Math.atan(Math.tan(vHalf) * aspect);
         // apparent (screen-plane) separation of the two characters from this angle
         const screenSep = sep * Math.sqrt(Math.max(0.15, 1 - Math.pow(hdir.dot(axis), 2)));
-        const margin = portrait ? 0.6 : 0.8;
+        const margin = portrait ? 0.75 : 0.9;
         const fitW = (screenSep / 2 + margin) / Math.tan(hHalf);  // both bodies + a small margin across the screen
-        // head-to-toe vertically; on phones the bottom ~30% is the dialogue box, so frame into the top ~70%
-        const fitH = (charH + 0.3) / ((portrait ? 1.3 : 1.45) * Math.tan(vHalf));
-        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH), portrait ? 2.6 : 3.2, 22);
-        const el = THREE.MathUtils.degToRad(portrait ? 20 : 15);
-        c.look.copy(mid); c.look.y += (portrait ? 0.34 : 0.48) * dist * Math.tan(vHalf); // feet ~1/3 up the screen: everyone stays above the dialogue box
+        // FULL BODY two-shot: head-to-toe above the dialogue box (~bottom 32% on phones)
+        const fitH = (charH * 1.35) / ((portrait ? 0.95 : 1.15) * Math.tan(vHalf));
+        const dist = THREE.MathUtils.clamp(Math.max(fitW, fitH) * camZoom.v, Math.max(7, charH * 4.2), 18);
+        const el = THREE.MathUtils.degToRad(portrait ? 18 : 14);
+        c.look.copy(mid); c.look.y += charH * 0.45; // aim mid-torso so whole bodies stay in frame
         c.pos.copy(c.look).addScaledVector(hdir, dist * Math.cos(el)); c.pos.y += dist * Math.sin(el);
         if (room) { // keep the lens out of the walls / roof: in front of the open side, between the side walls
           c.pos.x = THREE.MathUtils.clamp(c.pos.x, room.x[0], room.x[1]);

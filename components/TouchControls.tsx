@@ -87,7 +87,7 @@ const VERB: Record<string, Tx> = {
 };
 
 /** Always-visible zoom (pinch / mouse wheel / + - keys also work). Hold to keep zooming. */
-function ZoomButtons() {
+export function ZoomButtons() {
   const tx = useTx();
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const start = (f: number) => (e: React.PointerEvent) => {
@@ -167,13 +167,17 @@ export function TouchControls() {
   useEffect(() => { document.body.classList.toggle('touch', touch); }, [touch]);
   const play = (scene === 'forest' || scene === 'cottage') && !hasLine && !mini && !overlay && !sleeping;
   const show = touch && play;
+  const inWorld = scene === 'forest' || scene === 'cottage';
   useEffect(() => { if (!show) { stick.x = 0; stick.z = 0; stick.active = false; } }, [show]);
-  if (!touch) return play ? <div className="touchpad">{!running && <><KeyPrompt /><ZoomButtons /></>}</div> : null;
-  if (!show) return null;
-  if (running) return <div className="touchpad run"><Joystick run /></div>; // run-escort: just the pink steering pad
+  // Zoom always available in world (including during dialogue). Pads only when free to move.
+  if (!touch) {
+    if (!inWorld || mini || overlay) return null;
+    return <div className="touchpad">{!running && <KeyPrompt />}<ZoomButtons /></div>;
+  }
+  if (running) return <div className="touchpad run"><ZoomButtons /><Joystick run /></div>;
+  if (!show) return inWorld && !mini && !overlay ? <div className="touchpad"><ZoomButtons /></div> : null;
   return (
     <div className="touchpad">
-      <ZoomButtons />
       <Joystick />
       <ActionButtons />
     </div>

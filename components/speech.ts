@@ -18,20 +18,20 @@ type Profile = { pitch: number; rate: number; sex: 'f' | 'm'; alt?: number; pref
  * Eddy, Flo, Reed, Sandy, Shelley… / Windows: Heami, SunHi, InJoon / Android Google voices) we pick them by name.
  */
 export const VOICES: Record<string, Profile> = {
-  narrator: { pitch: 1.0, rate: 0.86, sex: 'f', alt: 1, prefer: /Shelley|Sandy|Yuna|SunHi|Samantha|Moira/i },  // warm, unhurried storyteller
-  seohui: { pitch: 1.55, rate: 1.1, sex: 'f', prefer: /Flo|Sora|Heami|Jenny|Karen/i },                       // 8 y/o: bright, quick
-  seojin: { pitch: 2.0, rate: 0.9, sex: 'f', alt: 1, prefer: /Flo|Yuna|Ava/i },                                  // 4 y/o: highest, a bit slower
-  snow: { pitch: 1.3, rate: 0.93, sex: 'f', alt: 2, prefer: /Shelley|Yuna|SunHi|Samantha/i },                   // gentle princess
-  queen: { pitch: 0.35, rate: 0.78, sex: 'f', alt: 3, prefer: /Sandy|Heami|Karen|Moira/i },                   // deep, cold, slow
-  oldwoman: { pitch: 0.2, rate: 0.68, sex: 'f', alt: 3, prefer: /Grandma|Sandy/i },                             // creaky, sly granny
-  mirror: { pitch: 0.1, rate: 0.66, sex: 'm', prefer: /Grandpa|Reed|InJoon|Daniel/i },                           // very deep, echoey
-  Doc: { pitch: 0.8, rate: 0.95, sex: 'm', prefer: /Grandpa|Reed|InJoon|Minsu|Daniel/i },
-  Grumpy: { pitch: 0.35, rate: 0.88, sex: 'm', alt: 1, prefer: /Reed|Minsu|InJoon|Fred/i },
-  Happy: { pitch: 1.45, rate: 1.25, sex: 'm', alt: 2, prefer: /Eddy|Rocko|Alex/i },
-  Sleepy: { pitch: 0.55, rate: 0.6, sex: 'm', alt: 1, prefer: /Grandpa|Reed/i },
-  Bashful: { pitch: 1.65, rate: 0.8, sex: 'm', alt: 2, prefer: /Eddy/i },
-  Sneezy: { pitch: 1.05, rate: 1.22, sex: 'm', prefer: /Reed|Eddy/i },
-  Dopey: { pitch: 1.9, rate: 1.1, sex: 'm', alt: 2, prefer: /Eddy|Rocko/i },
+  narrator: { pitch: 1.0, rate: 0.82, sex: 'f', alt: 1, prefer: /Shelley|Sandy|Yuna|SunHi|Samantha|Moira/i },  // warm, unhurried storyteller
+  seohui: { pitch: 1.6, rate: 1.18, sex: 'f', prefer: /Flo|Sora|Heami|Jenny|Karen/i },                       // 8 y/o: bright, quick
+  seojin: { pitch: 2.0, rate: 0.85, sex: 'f', alt: 1, prefer: /Flo|Yuna|Ava/i },                                  // 4 y/o: highest, a bit slower
+  snow: { pitch: 1.35, rate: 0.95, sex: 'f', alt: 2, prefer: /Shelley|Yuna|SunHi|Samantha/i },                   // gentle princess
+  queen: { pitch: 0.3, rate: 0.72, sex: 'f', alt: 3, prefer: /Sandy|Heami|Karen|Moira/i },                   // deep, cold, slow
+  oldwoman: { pitch: 0.1, rate: 0.62, sex: 'f', alt: 3, prefer: /Grandma|Sandy/i },                             // creaky, sly granny
+  mirror: { pitch: 0.05, rate: 0.6, sex: 'm', prefer: /Grandpa|Reed|InJoon|Daniel/i },                           // very deep, echoey
+  Doc: { pitch: 0.75, rate: 0.92, sex: 'm', prefer: /Grandpa|Reed|InJoon|Minsu|Daniel/i },
+  Grumpy: { pitch: 0.3, rate: 0.85, sex: 'm', alt: 1, prefer: /Reed|Minsu|InJoon|Fred/i },
+  Happy: { pitch: 1.5, rate: 1.35, sex: 'm', alt: 2, prefer: /Eddy|Rocko|Alex/i },
+  Sleepy: { pitch: 0.5, rate: 0.55, sex: 'm', alt: 1, prefer: /Grandpa|Reed/i },
+  Bashful: { pitch: 1.7, rate: 0.75, sex: 'm', alt: 2, prefer: /Eddy/i },
+  Sneezy: { pitch: 1.1, rate: 1.3, sex: 'm', prefer: /Reed|Eddy/i },
+  Dopey: { pitch: 1.95, rate: 1.2, sex: 'm', alt: 2, prefer: /Eddy|Rocko/i },
 };
 
 const MALE = /(\bmale\b|남성|InJoon|Minsu|Jinho|Daniel|Alex|Fred|Aaron|Guy|David|Mark|Ryan|Tom|Eddy|Reed|Rocko|Grandpa|x-ko[cd]|x-iom|x-iol|x-tpd)/i;

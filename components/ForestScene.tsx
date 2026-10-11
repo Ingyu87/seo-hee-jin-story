@@ -101,6 +101,9 @@ function Obstacle({ kind, x, z, r, grounds }: { kind: ObKind; x: number; z: numb
   useFrame((st) => {
     const g = ref.current; if (!g) return;
     g.position.y = groundY(grounds.current, x, z, 0);
+    // never clutter a conversation shot: obstacles near the talking pair step out of view while they talk
+    const gs = useGame.getState();
+    g.visible = !(gs.lines.length && Math.hypot(player.pos.x - x, player.pos.z - z) < 4);
     if (kind === 'thorn') g.rotation.y = Math.sin(st.clock.elapsedTime * 0.8 + t0) * 0.08; // gentle sway
   });
   return (

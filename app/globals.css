@@ -285,3 +285,7 @@ body.touch .shortcut { bottom: calc(max(26px, calc(env(safe-area-inset-bottom) +
 
 .runskip { position: absolute; right: max(12px, env(safe-area-inset-right)); top: max(122px, calc(env(safe-area-inset-top) + 114px)); pointer-events: auto; z-index: 6;
   border: 0; border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 14px; color: #fff; background: linear-gradient(#90caf9, #42a5f5); box-shadow: 0 3px 0 #1e88e5; cursor: pointer; }
+
+/* zoom buttons: always on screen in the story scenes (also during dialogue), above everything */
+.hud > .zoombtns { z-index: 20; top: 38%; }
+.zoombtns button { width: 48px; height: 48px; font-size: 28px; border: 3px solid #fff; background: #ff7fb0; color: #fff; box-shadow: 0 3px 0 #d94f86, 0 4px 10px #0003; }
