@@ -1,7 +1,11 @@
 'use client';
+import { cleanLine, ttsKey } from './ttsKey';
 /**
- * Story narration with the browser's built-in Web Speech API (speechSynthesis) — free, offline-capable,
- * no audio files. Lines are read in the selected language (ko-KR / en-US).
+ * Story narration, two layers:
+ *  1) Pre-generated neural voice clips (public/tts/*.mp3) made with the free Microsoft Edge "Read aloud"
+ *     voices (scripts/gen-tts.mjs) — a different voice actor per character in Korean and English.
+ *  2) Fallback: the browser's built-in Web Speech API (speechSynthesis) for any line without a clip,
+ *     or if the clip fails to load / play.
  */
 let voices: SpeechSynthesisVoice[] = [];
 const synth = () => (typeof window !== 'undefined' && 'speechSynthesis' in window ? window.speechSynthesis : null);
@@ -81,15 +85,50 @@ function pickVoice(lang: 'ko' | 'en', who: string) {
 /** How many distinct voices this device offers for the language (1 = pitch/speed only). */
 function voiceCount(lang: 'ko' | 'en') { return new Set([...castVoices(lang).values()].map((v) => v.name)).size; }
 
-export function stopSpeech() { synth()?.cancel(); }
+/* ---------- layer 1: pre-generated clips ---------- */
+let clipKeys: Set<string> | null = null;
+let audioEl: HTMLAudioElement | null = null;
+let speakSeq = 0;
+if (typeof window !== 'undefined') {
+  fetch('/tts/manifest.json').then((r) => (r.ok ? r.json() : null)).then((m) => { if (m?.keys) clipKeys = new Set(m.keys); }).catch(() => {});
+}
+function audio() {
+  if (typeof window === 'undefined') return null;
+  if (!audioEl) { audioEl = new Audio(); audioEl.preload = 'auto'; }
+  return audioEl;
+}
+const dbg = (k: string, v: unknown) => { if (typeof window !== 'undefined') ((window as unknown as { __snow?: Record<string, unknown> }).__snow ??= {})[k] = v; };
 
-/** Speak one line (cancels whatever was being read) in the given character's voice (see VOICES). */
+export function stopSpeech() {
+  speakSeq++;
+  synth()?.cancel();
+  if (audioEl) { try { audioEl.pause(); } catch {} }
+}
+
+/** Speak one line (cancels whatever was being read) in the given character's voice. */
 export function speak(text: string, lang: 'ko' | 'en', who: string = 'narrator') {
+  const clean = cleanLine(text);
+  stopSpeech();
+  if (!clean) return;
+  const seq = speakSeq;
+  const key = ttsKey(who, lang, text);
+  const a = audio();
+  if (a && clipKeys?.has(key)) {
+    dbg('lastSpeech', { mode: 'clip', who, lang, key });
+    a.src = `/tts/${key}.mp3`;
+    a.volume = 1;
+    a.play().catch(() => { if (seq === speakSeq) speakSynth(clean, lang, who); });
+    a.onerror = () => { if (seq === speakSeq) speakSynth(clean, lang, who); };
+    return;
+  }
+  speakSynth(clean, lang, who);
+}
+
+/* ---------- layer 2: browser speechSynthesis ---------- */
+function speakSynth(clean: string, lang: 'ko' | 'en', who: string) {
   const s = synth(); if (!s) return;
   s.cancel();
-  // strip emoji / stage-direction brackets that read badly
-  const clean = text.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{FE0F}]/gu, '').replace(/[“”"]/g, '').trim();
-  if (!clean) return;
+  dbg('lastSpeech', { mode: 'synth', who, lang });
   const p = VOICES[who] ?? VOICES.narrator;
   const u = new SpeechSynthesisUtterance(clean);
   u.lang = lang === 'ko' ? 'ko-KR' : 'en-US';
@@ -104,8 +143,14 @@ export function speak(text: string, lang: 'ko' | 'en', who: string = 'narrator')
   s.speak(u);
 }
 
-/** iOS Safari only lets speech start from a user gesture: call once from the first tap. */
+/** iOS Safari only lets audio / speech start from a user gesture: call once from the first tap. */
 export function unlockSpeech() {
+  const a = audio();
+  if (a) {
+    // a tiny silent WAV played on the same element we reuse later "unlocks" it for non-gesture playback
+    a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=';
+    a.play().catch(() => {});
+  }
   const s = synth(); if (!s) return;
   try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; s.speak(u); } catch {}
 }

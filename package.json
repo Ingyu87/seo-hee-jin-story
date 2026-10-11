@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "npx serve out -l 3000",
-    "optimize-models": "bash scripts/optimize-models.sh"
+    "optimize-models": "bash scripts/optimize-models.sh",
+    "gen-tts": "node scripts/gen-tts.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

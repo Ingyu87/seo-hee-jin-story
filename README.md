@@ -59,3 +59,15 @@ shared/             # Player, Npc, Lights, FollowCam, Hud, 서희·서진 캐릭
 - 공통: 서희/서진 모델, 이동·대화·상호작용 시스템, HUD
 - 동화별: 배경 GLB, NPC GLB, 상호작용 JSON (`*_interactables.json`), 대본
 - 첫 화면에서 캐릭터 선택 후 동화 선택 단계를 추가하면 됩니다.
+
+## Character voices (free)
+Every story line is pre-recorded with the free Microsoft Edge "Read aloud" neural voices (no API key, no cost) —
+a different voice per character in Korean and English (cast in `scripts/tts-cast.json`). Clips live in
+`public/tts/` and are served as static files; lines without a clip fall back to the browser's speechSynthesis.
+
+After changing dialogue, regenerate (only new lines are synthesized, unused clips are pruned):
+
+```bash
+python3 -m venv .venv-tts && .venv-tts/bin/pip install edge-tts
+EDGE_TTS=.venv-tts/bin/edge-tts npm run gen-tts
+```

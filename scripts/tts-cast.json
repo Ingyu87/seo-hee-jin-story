@@ -1,0 +1,34 @@
+{
+  "ko": {
+    "narrator": ["ko-KR-SunHiNeural", "-6%", "+0Hz"],
+    "seohui": ["en-US-AvaMultilingualNeural", "+6%", "+22Hz"],
+    "seojin": ["en-US-EmmaMultilingualNeural", "-4%", "+50Hz"],
+    "snow": ["fr-FR-VivienneMultilingualNeural", "-2%", "+10Hz"],
+    "queen": ["de-DE-SeraphinaMultilingualNeural", "-10%", "-18Hz"],
+    "oldwoman": ["pt-BR-ThalitaMultilingualNeural", "-16%", "-30Hz"],
+    "mirror": ["ko-KR-InJoonNeural", "-22%", "-35Hz"],
+    "Doc": ["ko-KR-HyunsuMultilingualNeural", "-4%", "-4Hz"],
+    "Grumpy": ["de-DE-FlorianMultilingualNeural", "-6%", "-16Hz"],
+    "Happy": ["en-US-AndrewMultilingualNeural", "+14%", "+16Hz"],
+    "Sleepy": ["en-US-BrianMultilingualNeural", "-26%", "-14Hz"],
+    "Bashful": ["fr-FR-RemyMultilingualNeural", "-10%", "+18Hz"],
+    "Sneezy": ["it-IT-GiuseppeMultilingualNeural", "+10%", "+8Hz"],
+    "Dopey": ["en-AU-WilliamMultilingualNeural", "+4%", "+30Hz"]
+  },
+  "en": {
+    "narrator": ["en-US-JennyNeural", "-6%", "+0Hz"],
+    "seohui": ["en-US-EmmaNeural", "+6%", "+26Hz"],
+    "seojin": ["en-US-AnaNeural", "-6%", "+10Hz"],
+    "snow": ["en-US-AvaNeural", "-2%", "+8Hz"],
+    "queen": ["en-US-MichelleNeural", "-10%", "-16Hz"],
+    "oldwoman": ["en-US-AriaNeural", "-16%", "-30Hz"],
+    "mirror": ["en-US-ChristopherNeural", "-22%", "-35Hz"],
+    "Doc": ["en-US-GuyNeural", "-4%", "+0Hz"],
+    "Grumpy": ["en-US-EricNeural", "-6%", "-16Hz"],
+    "Happy": ["en-US-RogerNeural", "+12%", "+14Hz"],
+    "Sleepy": ["en-US-SteffanNeural", "-26%", "-14Hz"],
+    "Bashful": ["en-US-BrianNeural", "-10%", "+18Hz"],
+    "Sneezy": ["en-US-AndrewNeural", "+10%", "+8Hz"],
+    "Dopey": ["en-AU-WilliamMultilingualNeural", "+4%", "+30Hz"]
+  }
+}
