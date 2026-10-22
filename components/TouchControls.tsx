@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useGame, T, Tx, useTx, jump } from './store';
-import { stick, currentAction } from './touch';
+import { stick, currentAction, doAction } from './touch';
 import { sfx } from './audio';
 import { zoomBy, resetCam } from './common';
 
@@ -165,7 +165,8 @@ function KeyPrompt() {
   const tx = useTx();
   const hasLine = useGame((s) => s.lines.length > 0);
   if (!act?.label || hasLine) return null;
-  return <div className="act-prompt desk"><kbd>E</kbd> {act.icon} {tx(act.label)}</div>;
+  return <div className="act-prompt desk" style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); doAction(); }}><kbd>E</kbd> {act.icon} {tx(act.label)}</div>;
 }
 
 /** On-screen joystick (bottom-left) + action button (bottom-right) for phones without a keyboard. */

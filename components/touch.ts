@@ -82,9 +82,12 @@ if (typeof window !== 'undefined') {
       return;
     }
     if (k !== 'e' && k !== 'enter') return;
-    if (t && (t.tagName === 'BUTTON' || t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-    if (doAction()) e.preventDefault();
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    // Enter on a focused button should still click that button; E always interacts
+    // (focus stays on the last clicked button, e.g. Start, which used to swallow E entirely)
+    if (k === 'enter' && t && t.tagName === 'BUTTON') return;
+    if (doAction()) { e.preventDefault(); if (t && t.tagName === 'BUTTON') t.blur(); }
   });
   const w = window as unknown as { __snow?: Record<string, unknown> };
-  w.__snow = Object.assign(w.__snow || {}, { stick, nearestAct, currentAction, doAction });
+  w.__snow = Object.assign(w.__snow || {}, { stick, acts, nearestAct, currentAction, doAction });
 }
